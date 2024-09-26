@@ -1,0 +1,870 @@
+\documentclass[10pt]{article}
+\usepackage{color}
+\usepackage[italian,english]{babel}
+\usepackage[margin=2cm]{geometry}
+\usepackage{bm}
+\usepackage{tikz}
+\usepackage[utf8x]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{apacite}
+\usepackage[bottom]{footmisc} 
+<<include=FALSE>>=
+library(knitr)
+options(digits=3)
+opts_chunk$set(fig.width=3, fig.height=3, dev="tikz",fig.align='center',echo=FALSE,results="hide",comment=NA,prompt=FALSE,warning=FALSE, cache = TRUE)
+@
+
+\usepackage{float}
+\floatstyle{boxed}
+\newfloat{program}{btp}{lop}
+\floatname{program}{Box}
+\usepackage{mdframed}
+\definecolor{boxcol}{RGB}{213,226,238}
+\newmdenv[linecolor=boxcol,backgroundcolor=boxcol]{comments}
+
+
+<<>>=
+rm(list=ls())
+main <- "/Users/ambraperugini/Library/CloudStorage/OneDrive-UniversitàdegliStudidiPadova/Lavoro/Overlapping/"
+
+#main <- "/home/bayes/lavori/overpermutation/"
+datadir <- paste0(main,"data/")
+# KUtils::pulizia(paste(main,"knitr/",sep=""), c(".Rnw",".bib","pdf"),TRUE)
+@
+
+
+\begin{document}
+
+\title{Implementing significance testing for the Overlapping Index using Permutation Test}
+\author{Ambra Perugini, Massimo Nucci, Livio Finos, Massimiliano Pastore}
+
+\maketitle
+
+<<>>=
+# ++++++++++++++++++++++++++++++++++
+betapar <- function(mx,sx,n=NULL) {
+  vx <- sx^2
+  if (vx<(mx*(1-mx))) {
+    pezzo <- ((mx*(1-mx))/vx)-1
+    a <- mx*pezzo
+    b <- (1-mx)*pezzo
+  } else {
+    warning("adjusted formula by using n")
+    a <- mx*n
+    b <- (1-mx)*n
+  }
+  return(list(a=a,b=b))
+}
+
+# +++++++++++++++++++++++++++
+snpar <- function(xi=0,omega=1,alpha=0) {
+  delta <- alpha/sqrt(1+alpha^2)
+  mu <- xi + omega * delta * sqrt( 2/pi )
+  sigma2 <- omega^2 * ( 1 - (2*delta^2)/pi )
+  return(list(mu = mu, sigma = sqrt(sigma2)))
+}
+
+# +++++++++++++++++++++++++++
+sninvpar <- function( mu=0, sigma=1, xi=NULL, omega=NULL, alpha=0 ) {
+  
+  if (is.null(omega)) {
+    delta <- alpha/sqrt(1+alpha^2)
+    omega2 <- sigma^2 / ( 1 - (2*delta^2) / pi )
+    omega <- sqrt( omega2 )
+  }
+  
+  if (is.null(xi)) {
+    delta <- alpha/sqrt(1+alpha^2)
+    xi <- mu - omega * delta * sqrt( 2/pi )
+  }
+  
+  return( list( xi = xi, omega = omega, alpha = alpha ) )
+  
+}
+
+# +++++++++ funzione colori default
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+# +++++++++++++++++++++++++++++++
+#' @name min_normal_uniform
+#' @description Calcola il minimo tra la densità di una normale e di una uniforme
+#' @param x = x vector
+#' @param normPars = parametri della normale: media e dev. standard
+#' @param unifPars = parametri della uniforme: minimo e massimo
+#' #' @param return.all = logical, if \code{TRUE} restituisce il data set completo delle densità delle due distribuzioni
+min_normal_uniform <- function( x = NULL, normPars = c(0,1), unifPars = c(0,1), return.all = FALSE ) {
+  
+  if (is.null(x)) x <- seq(-5,5,by=.1)
+  
+  y1 <- dnorm(x, normPars[1], normPars[2])
+  y2 <- dunif(x, unifPars[1], unifPars[2])
+  dy <- ifelse(y1<y2, y1, y2)
+  
+  gData <- data.frame( x, y1, y2, dy )  
+  
+  if (return.all) {
+    return( list( gData = gData ) )
+  } else {
+    return( dy )  
+  }
+
+}
+
+
+
+# +++++++++++++++++++++++++++++++++++
+#' @name min_dskew_normal
+#' @description Calcola il minimo tra due densità Skew-Normal
+#' @param x = x vector
+#' @param xi = vector of location parameters
+#' @param omega = vector of scale parameters
+#' @param alpha = vector of skewness parameters
+#' @param plot = logical, if \code{TRUE} produce la rappresentazione grafica delle densità 
+#' e dell'area di sovrapposizione
+#' @param return.all = logical, if \code{TRUE} restituisce il data set completo delle 
+#' densità delle due distribuzioni
+min_dskew_normal <- function( x = seq( -5, 5, by = .01 ), xi = c(0,0), omega = c(1,1), alpha = c(0,0), 
+                              return.all = FALSE ) {
+  
+  if (length(xi)==1) xi <- rep(xi,2)
+  if (length(omega)==1) omega <- rep(omega,2)
+  if (length(alpha)==1) alpha <- rep(alpha,2)
+  
+  require( sn )
+  y1 <- dsn( x, xi = xi[1], omega = omega[1], alpha = alpha[1] )
+  y2 <- dsn( x, alpha = alpha[2], xi = xi[2], omega = omega[2] )
+  dy <- ifelse( y1 < y2, y1, y2 )
+  gData <- data.frame( x, y1, y2, dy )  
+  
+  if (return.all) {
+    return( list( gData = gData ) )
+  } else {
+    return( dy )  
+  }
+}
+
+# ++++++++++++++++++++++++++++
+#' @name permTest
+#' @description Esegue test di permutazione su overlapping, 
+#'differenza tra medie e rapporto tra varianze
+#' @param xList = lista di due elementi (\code{x1} e \code{x2} ) 
+#' @param B = numero di permutazioni da effettuare
+#' @param ov.type = character, type of index. If type = "2" returns the proportion of the overlapped area between two or more densities. 
+#' @note Il confronto tra le medie è ad una sola coda e 
+#'testa l'ipotesi che le medie siano uguali vs l'ipotesi
+#'che la seconda sia maggiore della prima (\code{mean(x2) > mean(x1)})
+#' @return Restituisce una lista con tre elementi:
+#' obs = vettore dei valori osservati di non-sovrapposizione 
+#'       \coed{1-eta}, differenza tra le medie (\code{mean(x2)-mean(x1)}), 
+#'       rapporto tra le varianze
+#' perm = matrice Bx3 con i valori delle stesse statistiche ottenute
+#'        via permutazione
+#' pval = vettore con i tre p-values   
+permTest <- function( xList, B = 1000, ov.type = c("1","2")) {
+  
+  require(overlapping)
+  ov.type <- match.arg(ov.type)
+  names(xList) <- c("x1","x2")
+  N <- unlist( lapply(xList,length) )
+  
+  # observed statistics
+  zobs <- 1-overlap( xList, type = ov.type )$OV
+  dobs <- diff( unlist( lapply(xList, mean) ) )
+  Fobs <-  with( xList, var.test(x1,x2)$statistic )
+  OBS <- data.frame(zobs,dobs,Fobs)
+  Mobs <- matrix( OBS, nrow=B, ncol=3, byrow = TRUE )
+  
+  Yperm <- t( sapply(1:B, function(b){
+    xperm <- sample( unlist( xList ) )
+    xListperm <- list( x1 = xperm[1:N[1]], x2 = xperm[(N[1]+1):(sum(N))] )
+    
+    zperm <- 1 - overlap( xListperm, type = ov.type )$OV
+    dperm <- diff( unlist( lapply(xListperm, mean) ) )
+    Fperm <-  with( xListperm, var.test(x1,x2)$statistic )
+    
+    out <- c(zperm,dperm,Fperm)
+    names(out) <- c("zperm","dperm","Fperm")
+    out
+  }) )
+  
+  PVAL <- apply( Yperm > Mobs, 2, mean )
+  L <- list(obs=OBS,perm=Yperm,pval=PVAL)
+  
+  return(L)
+}
+
+
+@
+
+%\section{Introduction}
+
+%%% It is also optimal when the assumptions of linear regression (i.g. normality, homoschedasticity etc.) are not met, as the index is calculated on the empirical distributions \cite{pastore2015analisi}. If we think about a t-test, which is a comparison of two groups on a given variable, it is a simple form of linear regression and therefore relies on the assumptions of the residuals. There are cases, such as reaction times, when said assumptions would be violated if not properly taken into account. There are cases in which you could even have same mean in two populations over a given variable, but the distributions differ in other parameters in a way that they are actually very different from each other (see figure \ref{fig:equalmeans}).
+
+\section{Overlapping Index}
+
+The overlapping index ($\eta$) is an intuitive way to define the area intesected by two or more probability density functions \cite{pastore2019measuring}. In a simple way, two distributions are similar when their distribution functions overlap, and as $\eta$ diminishes, the two distributions differ. The index $\eta$ of two empirical distributions varies from zero -- when the distributions are completely disjoint -- and one -- when they are completely overlapped \cite{pastore2018overlapping}. The simple interpretation of the overlapping index ($\eta$) makes its use particularly suitable for many applications \cite{moravec1988sensor, viola1997alignment, inman1989overlapping, milanovic2002decomposing}.
+
+Assuming two probability density functions $f_A (x)$ and $f_B (x)$, the overlapping index $\eta: \mathbb{R}^n \times \mathbb{R}^n \to [0,1] $ is formally defined in the following way:
+
+
+\begin{eqnarray}
+\eta (A,B) = \int_{\mathbb{R}^n} min [f_A (x),f_B (x)] dx
+\end{eqnarray} 
+
+where, in the discrete case, the integer can be replaced by summation. As previously mentioned, $\eta (A,B)$ is normalized to one and when the distributions of A and B do not have points in common, meaning that $f_A (x)$ and $f_B (x)$ are disjoint, $\eta (A,B) = 0$. This index provides an intuitive way to quantify the agreement between $A$ and $B$ based on their density functions \cite{inman1989overlapping}. 
+
+<<>>=
+normPars <- c(10,2)
+unifPars <- c(0,20)
+n <- 30 
+@
+
+
+
+
+\vspace{.3cm}
+
+In theory the two distributions are defined in the following way: 
+$y_1 \sim \text{Normal}(\Sexpr{normPars})$ 
+$y_2 \sim \text{Unif}(\Sexpr{unifPars})$  
+
+The true $\eta = \Sexpr{round( integrate( min_normal_uniform, -Inf, Inf, normPars = normPars, unifPars = unifPars )$value, 2) }$.
+
+
+\vspace{.3cm}
+To quickly illustrate a visual representation of the overlapping area in two given distributions we present the following example: a sample of \Sexpr{n} observations generated from a normal distribution with mean of \Sexpr{normPars[1]} and standard deviation on \Sexpr{normPars[2]} and a sample of \Sexpr{n} generated from a random uniform with the minimum value of \Sexpr{unifPars[1]} and the maximum of \Sexpr{unifPars[2]}.
+
+
+
+<<warning=FALSE,message=FALSE>>=
+library(overlapping)
+set.seed(36)
+
+x <- rnorm(n, normPars[1], normPars[2])
+y <- runif(n, unifPars[1], unifPars[2])
+
+LIST<-list(x,y)
+OV <- overlap(LIST)
+TTEST <- t.test(x,y, var.equal = TRUE)
+TTESTUNEQUAL <- t.test(x,y, var.equal = FALSE)
+
+Y <- stack( data.frame(y1=x,y2=y) )
+
+@
+
+The figure \ref{fig:equalmeans} shows how two distributions with almost same mean could still be very different from each other with the overlapping area being $\hat{\eta} = \Sexpr{round(OV$OV,2)}$. 
+
+
+<<>>=
+myData <- data.frame( x = seq(0,20,by=.1) )
+myData$y1 <- dnorm(myData$x, normPars[1], normPars[2] )
+myData$y2 <- dunif(myData$x, unifPars[1], unifPars[2])
+myData$h <- with(myData, ifelse( y1 < y2, y1, y2 ))
+
+
+AREA <- integrate( min_normal_uniform, -Inf, Inf, normPars = normPars, unifPars = unifPars )
+
+@
+
+<<equalmeans,fig.cap="Comparison of a normal distribution and a uniform distribution with same mean.",fig.width=6>>=
+library(cowplot)
+plot_grid(
+  ggplot(myData,aes(x,y1)) + geom_line() + geom_line(aes(x,y2)) + 
+    geom_ribbon(aes(ymin=0,ymax=h), alpha = .5) + xlab("") + ylab("") + 
+    scale_y_continuous( breaks = NULL ) + ggtitle("[A]"), 
+  
+  ggplot(Y, aes(values,fill=ind,color=ind)) + geom_density(alpha = .5) + xlab("") + theme(legend.title = element_blank()) + ylab("") + 
+    scale_y_continuous( breaks = NULL ) + guides(fill="none",color="none")+ ggtitle("[B]")
+)
+
+
+@
+
+
+In this case, a t-test would not be able to detect such difference, as it does not take into account the different variance in the two groups. Even when using a Welch test, which does not assume equal variance, the test does is less informative ($t = \Sexpr{TTESTUNEQUAL$statistic}$, $p = \Sexpr{TTESTUNEQUAL$p.value}$) compared to the overlapping index.
+
+\subsection{Permutation approach}
+
+ Now we will introduce another approach which does not rely on the assumptions of linear models: the permutation approach. This is a non-parametric statistical method that can be used to determine statistical significance and it is most useful when the assumptions of parametric tests are not met \cite{pesarin2010permutation}. What the test does is to rearrange the data in many different ways and recalculates the test statistic each time. If we are thinking about a simple mean comparison (a t-test), the data in the two groups are mixed over and over and the t-value is calculated each time. If the two groups come from the same population, mixing the labels should give similar results to the ones observed. Else, if the two groups come from different populations, mixing tags should lead to very different results. From the empirical density of the permuted values it is possible to calculate the p-value as the probability to obtain an equal or more extreme value compared to the observed one. 
+
+\subsection{Application of permutation test to the overlapping index}
+
+If we are reasoning from the perspective of Null Hypothesis Significance Testing (NHST), we should define the null hypothesis as follows: $H_0: \eta = 1$,  meaning there is no difference between the distributions of data in the population. For this reason, it is more intuitive to work with the complement of $\eta$, which is  $1-\eta = \zeta$ which is the area of non-overlap, therefore, defining the null hypothesis as  $H_0:\zeta = 0$. When testing the difference between the two distributions, we will no longer be working with $\eta$, but with the complement $\zeta$. 
+
+Even though the overlapping index has a simple interpretation, one could argue that it does not provide information on the significance of the parameter $\eta$, therefore, we decided to implement permutation testing to offer to the ones interested a value of significance. In particular, we implemented permutations test, to give a tool that tests differences in distributions in cases where other tests' assumptions would be violated.
+
+The algorithm estimates the value of $\zeta$ on the observed data ($\hat{\zeta}$). Then, through permutation, the values of the two groups are randomly re-assigned to the groups for B times, estimating again the new value of  $\hat{\zeta}_b$. The times in which the estimate of $\hat{\zeta}_b$ on permuted data is higher than the one observed on real data is estimated ($\hat{\zeta}_b > \hat{\zeta}$) and then the found value is divided by B, returning the $p$-value. This approach is equivalent to the traditional parametric tests.
+
+A typical example of data not respecting previously said assumptions is reaction times and for this purpose we present a real case of a dataset available online (citation of the OSF repository) on reaction times of word reading of high and low frequency words in English and we implement on the overlapping function the permutation test. 
+
+<<echo = FALSE>>=
+DATA<-read.csv(paste0(datadir,"EngTurk.csv"))
+
+# parole alta e bassa freq Inglese
+table(DATA$item[DATA$ItemType == "High_freq" & DATA$Language == "English"])
+table(DATA$item[DATA$ItemType == "Low_freq" & DATA$Language == "English"])
+# blue eyes 
+# foreign business
+
+low_frequency <-DATA$ReactionTime[DATA$item == "blue eyes"]
+high_frequency <- DATA$ReactionTime[DATA$item == "foreign business"]
+
+@
+
+<<reactiontimes,fig.cap="Plot of the densities of reaction times",echo=FALSE,message=FALSE, fig.width=3, fig.height=2, results='hide'>>=
+xList <- list( x1 = low_frequency, x2 = high_frequency ) 
+@
+
+
+<<>>=
+(obsz <- 1 - overlap( xList )$OV)
+@
+
+<<permtest2,fig.keep='none'>>=
+B <- 2e3
+n <- length(xList[[1]])
+zperm <- sapply( 1:B, function(x){
+  xperm <- sample( unlist( xList ) )
+  xListperm <- list( x1 = xperm[1:n], x2 = xperm[(n+1):(n*2 )] )
+  1 - overlap( xListperm )$OV
+})
+plot( density(zperm) )
+abline( v = obsz, lty = 2 )
+@
+
+<<ex2,fig.cap=paste0("$\\hat{\\zeta} = ",round(obsz,3),"$. [A] Distribution of reaction times of word reading of high and low frequency words in English; [B] Distribution of $\\hat{\\zeta}$ obtained with ",B," permutations of the data."),fig.width=6>>=
+Y <- stack(data.frame(xList))
+ZPERM <- data.frame(zperm)
+
+theme_set(theme_bw())
+cowplot::plot_grid(
+  ggplot( Y, aes(values,fill=ind,color=ind) )+geom_density(alpha = .5) + theme(legend.title = element_blank()) +xlab("") +ylab("")+guides(fill="none",color="none")+ggtitle("[A]"),
+
+  ggplot(ZPERM,aes(zperm))+geom_vline(xintercept = obsz,lty=2) +geom_density()+ggtitle("[B]")  +xlab("") +ylab("") 
+
+)
+@
+In the figure \ref{fig:ex2}[A] are represented the densities of reaction times of word reading of high and low frequency words in English; the obtained value of $\hat{\zeta}$ is \Sexpr{obsz}. In figure \ref{fig:ex2}[B] is represented the distribution of the values of $\hat{\zeta}$ obtained with \Sexpr{B} permutations; let us calculate the $p$-\emph{value}:
+
+<<results='markup',echo=TRUE>>=
+sum( zperm > obsz ) / length( zperm )
+@
+
+The difference is statistically significant and the $t$ test:
+<<results='markup'>>=
+L <- capture.output( with( xList, t.test( x1, x2 ) ) )
+
+cat("> with( xList, t.test( x1, x2 ) )","\n")
+for (j in 1:(grep("alt",L)-1)) cat(L[j],"\n")
+@
+
+
+\section{Simulation study}
+
+To evaluate the performance of the permutation test applied to the overlapping index, we performed a simulation study. The aim is to generate data for a set of scenarios distinguishing mean, variance and shape of the populations and compare the $\zeta$ perm test to other commonly used tests in terms of type I error control and power. 
+
+\subsection{Data generation}
+
+In the simulation, two density distributions will be compared for many different scenarios. The first distribution will always be a normal standard distribution with $\mu = 0$ and $\sigma = 1$. 
+To simulate data for the second distribution we use the Skew-Normal distribution \cite{azzalini:1985}, which is defined in the following way: given $\xi \in \mathbb{R}$, $\omega \in \mathbb{R}^{+}$ and $\alpha \in \mathbb{R}$, then for $y \in \mathbb{R}$ we have  
+\begin{eqnarray}
+\mathcal{SN}(y|\xi, \omega, \alpha) = \frac{1}{\omega \sqrt{2\pi}} exp \left[ -\frac{1}{2} \left( \frac{y-\xi}{\omega} \right)^2  \right] \left[ 1+ \text{erf}\left( \alpha \left( \frac{y-\xi}{\omega\sqrt{2}}\right) \right) \right]
+\end{eqnarray} 
+in which $$\text{erf}(z) = \frac{2}{\sqrt{\pi}} \int_{0}^{z} e^{-t^2} dt $$ is the \emph{error function}.
+When $\xi = 0$, $\omega = 1$ and $\alpha = 0$ the distribution is a standard normal distribution.
+
+The parameter $\alpha$ determines the symmetry, $\xi$ is the mean value and $\omega$ determines the variance. Therefore, this distribution is suitable to generate data modelling both the distance between means (the effect size), symmetry and variance.
+
+Mean and variance of the Skew-Normal are respectively: 
+\begin{eqnarray}\label{eq:musigmaSN}
+\begin{array}{l}
+\mu = \xi + \omega \delta \sqrt{2/\pi} \\
+\sigma^2 = \omega^2 [1- (2\delta^2)/\pi]
+\end{array}
+\end{eqnarray}
+in which $\delta = \alpha / \sqrt{1 + \alpha^2}$. Based on the equations (\ref{eq:musigmaSN}) we can determine the values to assign to the parameters $\xi$ e $\omega$ in function of $\mu$ and $\sigma$ with the equations:
+
+\begin{eqnarray}\label{eq:xiomegaSN}
+\begin{array}{l}
+ \xi = \mu - \omega \delta \sqrt{2/\pi} \\
+ \omega = \sqrt{\sigma^2/ [1- (2\delta^2)/\pi]}
+\end{array}
+\end{eqnarray}
+
+The Skwe-Normal distribution is optimal for our purpose as it allows to have control over parameters of skewness and kurtosis, as shown in figure \ref{fig:scenari}.
+
+<<scenari,fig.cap=paste0("Skew-Normal distribution ($\\xi$,$\\omega$,$\\alpha$); [A] the parameter $\\xi$ controls the mean, [B] the parameter $\\omega$ the variance and [C] the parameter  $\\alpha$ the simmetry."),message=FALSE,fig.width=8>>=
+library(sn)
+
+PARlist <- list(
+  xi_vec = c(0,.5,1),
+  omega_vec = c(1,2,3),
+  alpha_vec = c(0,1,2)
+)
+
+x <- seq(-5,5,by=.1)
+
+gData <- NULL
+for (j in 1:3) {
+  
+  # xi
+  y <- with( PARlist, dsn(x,xi_vec[j],omega_vec[1],alpha_vec[1]) )
+  xi <- PARlist$xi_vec[j]
+  omega <- PARlist$omega_vec[1]
+  alpha <- PARlist$alpha_vec[1]
+  scenario <- "xi"
+  dd <- data.frame(x,y,xi,omega,alpha,scenario)  
+  gData <- rbind(gData,dd)  
+  
+  # omega
+  y <- with( PARlist, dsn(x,xi_vec[1],omega_vec[j],alpha_vec[1]) )
+  xi <- PARlist$xi_vec[1]
+  omega <- PARlist$omega_vec[j]
+  alpha <- PARlist$alpha_vec[1]
+  scenario <- "omega"
+  dd <- data.frame(x,y,xi,omega,alpha,scenario)  
+  gData <- rbind(gData,dd)  
+   
+  # alpha
+  y <- with( PARlist, dsn(x,xi_vec[1],omega_vec[1],alpha_vec[j]) )
+  xi <- PARlist$xi_vec[1]
+  omega <- PARlist$omega_vec[1]
+  alpha <- PARlist$alpha_vec[j]
+  scenario <- "alpha"
+  dd <- data.frame(x,y,xi,omega,alpha,scenario)  
+  gData <- rbind(gData,dd)  
+  
+  
+}
+
+gData$xi <- factor(gData$xi)
+gData$omega <- factor(gData$omega)
+gData$alpha <- factor(gData$alpha)
+
+theme_set(theme_bw())
+cowplot::plot_grid(
+  ggplot(subset(gData,scenario=="xi"),aes(x,y,color=xi))+geom_line()+xlab("")+ylab("")+ggtitle("[A]")+theme(legend.position = "bottom")+labs(color="$\\xi$"),
+  
+  ggplot(subset(gData,scenario=="omega"),aes(x,y,color=omega))+geom_line()+xlab("")+ylab("")+ggtitle("[B]")+theme(legend.position = "bottom")+labs(color="$\\omega$"),
+  
+  ggplot(subset(gData,scenario=="alpha"),aes(x,y,color=alpha))+geom_line()+xlab("")+ylab("")+ggtitle("[C]")+theme(legend.position = "bottom")+labs(color="$\\alpha$"), nrow = 1
+)
+
+@
+
+
+\subsection{Simulation design}
+
+<<message=FALSE>>=
+load(paste0(datadir,"sim07.rda"))
+
+ALL$mu <- factor(with(ALL, snpar(delta,omega,alpha)$mu))
+ALL$sigma <- factor(with(ALL, snpar(delta,omega,alpha)$sigma))
+
+INDICI <- colnames(ALL)[grep("pval",colnames(ALL))]
+INDICI <- INDICI[!(grepl("_norm",INDICI)|grepl("F_",INDICI)|grepl("mean_",INDICI))]
+
+LEGENDA <- data.frame( var = colnames(ALL), desc = c("media camp. 1", "sd camp. 1","media camp. 2", "sd camp. 2", "overlapping tipo 1", "overlapping tipo 2", "sample size","differenza tra le xi","skewness","varianza","vera sovrapposizione","t test","welch test","wilcoxon test", "var test", "overlapping perm","mean perm", "var perm", "shapiro camp. 1", "shapiro camp. 2","kolmogorov","media secondo campione","ds secondo campione") )
+
+ALL <- subset(ALL, (mu %in% PARlist$mu_vec) & (alpha %in% PARlist$alpha_vec ) & (sigma %in% PARlist$sigma_vec))
+ALL$mu <- factor(ALL$mu)
+ALL$sigma <- factor(ALL$sigma)
+
+MUSI <- with( PARlist, expand.grid(mu=mu_vec, sigma=sigma_vec, alpha = alpha_vec) )
+
+DESIGN <- NULL 
+for (i in 1:nrow(MUSI)) {
+  DESIGN <- rbind( DESIGN, unlist( with( MUSI, sninvpar(mu[i],sigma[i],alpha = alpha[i]) )) )
+}
+
+DESIGN <- data.frame(DESIGN)
+DD <- with( DESIGN, expand.grid( xi = unique(xi), omega = unique(omega), 
+              alpha = unique(alpha), n = PARlist$n_vec ) )
+DESIGN <- apply(DD, 1, as.list)
+
+DD <- do.call(rbind,lapply(DESIGN, function(x){
+  unlist(x)
+}))
+DD <- data.frame( unique( DD[,c("xi","omega","alpha")] ) )
+DD$mu <- factor(with(DD, snpar(xi,omega,alpha)$mu))
+DD$sigma <- factor(with(DD, snpar(xi,omega,alpha)$sigma))
+
+DD <- subset( DD, (mu %in% PARlist$mu_vec)  & (alpha %in% PARlist$alpha_vec ) & (sigma %in% PARlist$sigma_vec))
+
+
+library(sn)
+library(brms)
+
+x <- seq(-5,5, by=.01)
+gData <- data.frame(x=x)
+gData$z <- dskew_normal(x,xi=0,omega=1)
+
+for (i in 1:nrow(DD)) {
+  k <- with(DD, paste0("mu_",mu[i],"_sigma_",sigma[i],"_alpha_",alpha[i]))
+  y <- dsn( gData$x, xi = DD$xi[i], omega = DD$omega[i], alpha = DD$alpha[i] )
+  
+  gData <- cbind(gData,y)
+  colnames(gData)[ncol(gData)] <- k
+  
+}
+
+
+@
+
+<<>>=
+Y <- stack( gData[,grep("mu",colnames(gData))] )
+Y$x <- gData$x
+Y$z <- gData$z
+
+ll <- strsplit(as.character(Y$ind),split="_")
+
+Y$mu <- factor( unlist( lapply(ll, function(x){x[2]}) ))
+Y$sigma <- factor( unlist( lapply(ll, function(x){x[4]}) ))
+Y$alpha <- factor( unlist( lapply(ll, function(x){x[6]}) ), levels = c(0,2,10))
+
+TEXT <- unique(Y[,c("mu","sigma","alpha")])
+TEXT$label <- paste0("[",1:36,"]")
+TEXT$x <- -4.5
+TEXT$y <- .4
+
+@
+
+In the simulation we confront two samples extracted from a Skew-Normal, the first one is generated from $\mathcal{SN}(0,1,0)$, which is the Standard-Normal distribution, and the second one from $\mathcal{SN}(\xi,\omega,\alpha)$ where parameters are chosen each time based on the experimental design as follows:
+
+
+\begin{itemize}
+
+  \item $n = (\Sexpr{PARlist$n_vec})$; sample size, equal in the two samples;
+  \item $\delta = (\Sexpr{PARlist$mu_vec})$; mean of the second sample, which corresponds also to the difference between the two groups, the first one has always $\mu = 0$;
+  \item $\sigma = (\Sexpr{PARlist$sigma_vec})$; standard deviation of the second sample;
+  \item $\alpha = (\Sexpr{PARlist$alpha_vec})$; degree of asymmetry (skewness) of the second sample. 
+  \item N simulation: 1000 for each combination of parameters
+
+\end{itemize}
+
+
+For each of the $5 \times 4 \times 3 \times 3 = 180$ conditions we generated 1000 sets of data on which we performed the analysis.
+
+In figure \ref{fig:alpha0} are graphically represented the 36 scenarios of data generation, the black curves are the first sample, always a $\mathcal{SN}(0,1,0)$, and the red curves are relative to the second sample $\mathcal{SN}(\xi,\omega,\alpha)$.
+
+For each combination $n \times \delta \times \sigma \times \alpha$, on the generated data were performed the following tests: 
+\begin{itemize}
+ \item $t$ test for independent samples, assuming equal variance
+ \item Welch test for independent samples 
+ \item Wilcoxon test for independent samples
+ \item Permutation test on the complement of the overlapping index, $\zeta = 1-\eta$, which therefore becomes an index of difference between groups
+ \item $F$ test of omogeneity of variances
+ \item Kolmogorov-Smirnov test for confronting two distributions
+\end{itemize}
+
+% \begin{itemize}
+%  \item T-test: a parametric test used to test if the mean value of a distribution is significantly different from the one of another group;
+%  \item Welch test: as a variation of the independent sample t-test, this one does not assume equal variance between the two groups, and is therefore more robust when variance or sample size is different in the two groups;
+%  \item Wilcoxon Signed-Rank Test: is a non parametric test to compare two related samples or a single repeated measure on the same sample when the data is not normally distributed and is based on the mean rank difference;
+%  \item Variance test (F-test): a parametric test to compare the variance in two groups or more. It relies on normality assumptions and the null hypotesis is equal variance in the two groups;
+%  \item Kolmogorov-Smirnov Test: a non-parametric test used to either compare a sample distribution to a known distribution or to compare two samples to test if they come from the same unknown distribution;
+%  \item T-test with permutation approach: is a test on means but the p-value is calculated through permutations, therefore it is not parametric;
+%  \item F-test with permutation approach: is a test on variance and again, it is a non parametric test calculating the p-value through permutations of the data;
+%  \item Overlapping index $\zeta$ with permutation approach.
+% \end{itemize}
+
+<<alpha0,fig.width=7,fig.cap=" Generative data distributions in function of $\\delta$ (column panels) and $\\sigma$ (row panels). The black curves are the first sample, $\\mathcal{SN}(0,1,0)$, the red ones represent second sample.",fig.height=9>>=
+
+library(cowplot)
+theme_set(theme_bw())
+ggplot(Y,aes(x,z)) + facet_grid(alpha+sigma~mu) + geom_line() + geom_line(aes(x,values,color="red")) + geom_text( aes(x,y,label=label), data = TEXT) + guides(color="none")
+
+@
+
+\subsection{Definition of Null Hypothesis}
+
+Each test relies on different assumptions and tests a specific null hypothesis. 
+
+\subsubsection{$t$ test}
+
+
+This is the classic case of a test for independent samples assuming equal variances:
+ 
+\begin{eqnarray*}
+H_0: \mu_1 - \mu_2 = 0 \mbox{ con } \sigma_1 = \sigma_2
+\end{eqnarray*}
+
+Therefore, in the scenarios from which the samples come from populations with same mean $\mathcal{SN}(0,\sigma,\alpha)$ -- figure \ref{fig:alpha0}, panels in the first left column -- type I error control is estimated, meanwhile, power is estimated for the other scenarios.
+
+\subsubsection{Welch test}
+
+This is the $t$ test modified when homogeneity of variances is not respected:
+
+\begin{eqnarray*}
+H_0: \mu_1 - \mu_2 = 0 \mbox{ con } \sigma_1 \neq \sigma_2
+\end{eqnarray*}
+
+Control of type I error is estimated for the same scenarios as for the $t$ test, as well as for the power.
+
+\subsubsection{Wicoxon-Mann-Whitney test}
+
+This is the test on ranks which assumes
+ 
+\begin{eqnarray*}
+H_0: P(X_1 > X_2) = P(X_2 > X_1) = 0.5
+\end{eqnarray*} 
+
+in which $X_1$ and $X_2$ are the random variables representing the observations extracted from the two populations. In this case, the only scenario in which $H_0$ is true is in panel [1].
+
+\subsubsection{$\zeta$ permutation test}
+
+Since $\zeta = 1 - \eta$, in which $\eta$ is the area of overlapping of the empirical distributions, the null hypothesis of the test is $$H_0: \zeta = 0$$ which implies that the data comes from the same population, or from populations with same shape (mean, variance and skewness). Therefore, the only condition in which $H_0$ is true is the first panel. 
+
+\subsubsection{$F$ test}
+
+This is the test of homogeneity of variances $$H_0: \sigma^2_1 = \sigma^2_2$$ the condition is true in all scenarios where $(\delta,1)$, panels [1:4, 13:16, 25:28]. In those scenarios we estimate type I error, in all the others we calculate power.
+
+\subsubsection{Kolmogorov-Smirnov test}
+
+This test compares the cumulative distributions $$H_0: F(X_1) = F(X_2)$$ therefore, the null hypothesis should be true in panel [1], as it is for the $\zeta$ permutation test.
+
+Taking into account those null hypothesis and assumptions, we will compute type I error by counting how many times the test is significant when the null is true, and the power by counting how many times it will be significant when $H_0$ is not true. Then we will consider separately the cases in which assumptions are respected and when they are not.
+
+\section{Results}
+
+Figure \ref{fig:correlazioni} represents the correlation matrix between the indexes in all experimental conditions, calculated on \Sexpr{nrow(ALL)} indexes obtained from the simulation. two subgroups are clearly visible: the first group with tests on mean and ranks, and the second one on tests about the shape, the $F$ test is not correlated with the others. 
+
+<<>>=
+SAMPLE_prop <- .005
+ALL0 <- subset(ALL,alpha == 0 )
+righe <- sample(1:nrow(ALL0),nrow(ALL0)*SAMPLE_prop)
+ALL2 <- subset(ALL,alpha == 2)
+ALL10 <- subset(ALL,alpha == 10)
+@
+
+<<correlazioni,sanitize=TRUE,fig.cap=paste0("Correlation matrix among $p$-values $(N = ",nrow(ALL),")$."),fig.pos="!h",fig.width=5,fig.height=4>>=
+library(DataExplorer)
+plot_correlation( ALL[, INDICI])
+@
+
+\subsection{Global type I error and power}
+
+<<>>=
+ALL$zeta_perm_sig <- ifelse(ALL$zeta_perm_pval<=.05,TRUE,FALSE)
+ALL$t_pval_sig <- ifelse(ALL$t_pval <= .05, TRUE, FALSE)
+ALL$welch_pval_sig <- ifelse(ALL$welch_pval <= .05, TRUE, FALSE)
+ALL$wilcox_pval_sig <- ifelse(ALL$wilcox_pval <= .05, TRUE, FALSE)
+ALL$vartest_pval_sig <- ifelse(ALL$vartest_pval <= .05, TRUE, FALSE)
+ALL$ks_test_pval_sig <- ifelse(ALL$ks_test_pval <= .05, TRUE, FALSE)
+
+ALL$zeta_perm_H0_true <- with(ALL, ifelse(mu==0 & sigma == 1 & alpha == 0, TRUE, FALSE))
+ALL$t_H0_true <- with(ALL, ifelse(mu==0, TRUE, FALSE))
+ALL$welch_H0_true <- with(ALL, ifelse(mu==0, TRUE, FALSE))
+ALL$wilcox_H0_true <- with(ALL, ifelse(mu==0 & sigma == 1 & alpha == 0, TRUE, FALSE))
+ALL$vartest_H0_true <- with(ALL, ifelse(sigma == 1, TRUE, FALSE))
+ALL$ks_H0_true <- with(ALL, ifelse(mu==0 & sigma == 1 & alpha == 0, TRUE, FALSE))
+
+
+@
+
+<<>>=
+PW <- aggregate( zeta_perm_sig ~ n+zeta_perm_H0_true, data = ALL, FUN = mean)
+PW$t_sig <- aggregate( t_pval_sig ~ n+t_H0_true, data = ALL, FUN = mean)$t_pval_sig
+PW$welch_sig <- aggregate( welch_pval_sig ~ n+welch_H0_true, data = ALL, FUN = mean)$welch_pval_sig
+PW$wilcox_sig <- aggregate( wilcox_pval_sig ~ n+wilcox_H0_true, data = ALL, FUN = mean)$wilcox_pval_sig
+PW$vartest_sig <- aggregate( vartest_pval_sig ~ n+vartest_H0_true, data = ALL, FUN = mean)$vartest_pval_sig
+PW$ks_sig <- aggregate( ks_test_pval_sig ~ n+ks_H0_true, data = ALL, FUN = mean)$ks_test_pval_sig
+
+Y <- stack(PW[,grep("_sig",colnames(PW))])
+Y$H0 <- PW$zeta_perm_H0_true
+Y$n <- PW$n
+
+
+@
+
+In figure \ref{fig:global}, is represented type I error in panel A and power in panel B, for all scenarios it is evaluated when $H_0$ is either true or false, as different tests have different null hypothesis. Panel A shows how they all control well enough for type I error, except for the $F$ test. The $\zeta$ perm test outperforms all other tests in terms of power, already from small sample sizes, once more, the $F$ test is the exception, as it is a test on variance.
+
+<<global,fig.cap="Control of type I error [A] and power [B] in various tests taking into account for each of them in which scenario $H_0$ is true or false.",fig.width=7, fig.scap="l">>=
+
+levels(Y$ind) <- gsub("_","\\\\_",levels(Y$ind))
+
+theme_set(theme_bw())
+plot_grid(
+  ggplot( subset(Y,H0==TRUE), aes(n,values,color=ind,shape=ind))  + geom_hline(yintercept = .05, lty = 3) + geom_line() + geom_point() + guides(color="none",shape = "none") + ggtitle("[A] $H_0$ true") + ylab("P(reject $H_0$)") + xlab("sample size (per group)"),
+  
+  ggplot( subset(Y,H0==FALSE), aes(n,values,color=ind,shape=ind))  + geom_hline(yintercept = .05, lty = 3) + geom_line() + geom_point() + theme(legend.title = element_blank()) + ggtitle("[B] $H_0$ false") + ylab("P(reject $H_0$)") + xlab("sample size (per group)"),
+  
+  rel_widths = c(.65,1)
+
+  
+)
+
+
+
+@
+
+\subsection{Assumptions and type I error and power}
+
+In the top row of figure \ref{fig:assunzioni} are represented type I error and power for cases in which assumptions are respected. The patter is similar to the scenario in \ref{fig:global} where there was no distinction for the assumptions, confirming the good control of type I error of the $\zeta$ perm test and greater power of the test in comparison to the others.
+As not all tests that we performed imply assumptions, we only computed type I error and power for those tests that can have the assumptions violated ($t$ test, $F$ test, Welch test). What emerges is a bad control of type I error of the $F$ test.
+
+
+<<>>=
+ALL$zeta_perm_assumption <- TRUE
+ALL$t_assumption <- with(ALL, ifelse( (sigma==1) & (alpha == 0), TRUE, FALSE))
+ALL$welch_assumption <- with(ALL, ifelse(alpha==0, TRUE, FALSE))
+ALL$wilcox_assumption <- TRUE
+ALL$vartest_assumption <- with(ALL, ifelse(alpha == 0, TRUE, FALSE))
+ALL$ks_assumption <- TRUE
+
+
+NOMICOLONNE <- c("n","H0_true","assumption","sig","test")
+PW <- aggregate( zeta_perm_sig ~ n+zeta_perm_H0_true+zeta_perm_assumption, data = ALL, FUN = mean)
+PW$test <- "zeta_perm"
+colnames(PW) <- NOMICOLONNE
+
+PW2 <- aggregate( t_pval_sig ~ n+t_H0_true+t_assumption, data = ALL, FUN = mean)
+PW2$test <- "t_test"
+colnames(PW2) <- NOMICOLONNE
+PW <- rbind(PW,PW2)
+
+PW2 <- aggregate( welch_pval_sig ~ n+welch_H0_true+welch_assumption, data = ALL, FUN = mean)
+PW2$test <- "welch_test"
+colnames(PW2) <- NOMICOLONNE
+PW <- rbind(PW,PW2)
+
+PW2 <- aggregate( wilcox_pval_sig ~ n+wilcox_H0_true+ wilcox_assumption, data = ALL, FUN = mean)
+PW2$test <- "wilcox_test"
+colnames(PW2) <- NOMICOLONNE
+PW <- rbind(PW,PW2)
+
+
+PW2 <- aggregate( vartest_pval_sig ~ n+vartest_H0_true+vartest_assumption, data = ALL, FUN = mean)
+PW2$test <- "var_test"
+colnames(PW2) <- NOMICOLONNE
+PW <- rbind(PW,PW2)
+
+
+PW2 <- aggregate( ks_test_pval_sig ~ n+ks_H0_true+ks_assumption, data = ALL, FUN = mean)
+PW2$test <- "ks_test"
+colnames(PW2) <- NOMICOLONNE
+PW <- rbind(PW,PW2)
+
+@
+
+<<assunzioni,fig.width=7,fig.cap="Control of type I error and power for scenarios in which assumptions are respected (top panels) and when they are not (bottom panels).",fig.height=5>>=
+#PW$H0_true <- factor(PW$H0_true, levels = c("TRUE","FALSE"), labels = c("H0 true","H0 false"))
+#PW$assumption <- factor(PW$assumption, levels = c("TRUE","FALSE"), labels = c("assumption true","assumption false"))
+
+PW$test <- gsub("_","\\\\_",PW$test)
+
+theme_set(theme_bw())
+plot_grid(
+  
+  ggplot(subset(PW,H0_true&assumption),aes(n,sig,color=test,shape=test))   + geom_line() + geom_point(size=2) + geom_hline(yintercept = .05, lty = 3) + ggtitle("[A] $H_0$ true / assumptions true")+ ylab("P(reject $H_0$)") + xlab("sample size (per group)") + guides(color="none",shape="none"),
+  
+  ggplot(subset(PW,!H0_true&assumption),aes(n,sig,color=test,shape=test))   + geom_line() + geom_point(size=2) + geom_hline(yintercept = .05, lty = 3) + ggtitle("[B] $H_0$ false / assumptions true")+ ylab("P(reject $H_0$)") + xlab("sample size (per group)"),
+  
+  ggplot(subset(PW,H0_true&(!assumption)),aes(n,sig,color=test,shape=test)) + geom_line() + geom_point(size=2) + geom_hline(yintercept = .05, lty = 3) + ggtitle("[C] $H_0$ true / assumptions false")+ ylab("P(reject $H_0$)") + xlab("sample size (per group)") + guides(color="none",shape="none"),
+  
+  ggplot(subset(PW,!H0_true& (!assumption)),aes(n,sig,color=test,shape=test))   + geom_line() + geom_point(size=2) + geom_hline(yintercept = .05, lty = 3) + ggtitle("[D] $H_0$ false / assumptions false")+ ylab("P(reject $H_0$)") + xlab("sample size (per group)"),
+  
+  rel_widths = c(.7,1)
+  
+  
+
+)
+
+#ggplot(PW,aes(n,sig,color=test,shape=test)) + theme_bw() + facet_grid(assumption~H0_true,scales = "free") + geom_line() + geom_point(size=2) + geom_hline(yintercept = .05, lty = 3)
+@
+
+
+
+%%\subsection{gara tra $\zeta$ perm da solo e t-test, ks e var test }
+
+\section{Discussion}
+
+\newpage
+
+\section{Legenda}
+
+$\eta$ is the area of overlap
+
+$\zeta$ is the area of non overlap, therefore $1 - \eta$
+
+$\mu$ is the parameter of the mean of the normal standard 
+
+$\sigma$ is the standard deviation of the normal standard
+
+$\alpha$ determins the simmetry of the skew-normal
+
+$\xi$ is the mean value of the skew-normal
+
+$\omega$ determines the variance of the skew-normal
+
+$\delta$ is the difference between the two means
+
+
+
+\newpage
+\bibliographystyle{apacite}
+\bibliography{overlap}
+
+<<>>=
+opts_chunk$set(eval = FALSE)
+@
+
+
+\end{document}
+
+<<include=FALSE, eval = FALSE>>=
+library(overlapping)
+library(tidyverse)
+library(ggplot2)
+load(paste0(datadir,"Arsalidou-CMT-NMT-Data-forDataverse2024-02-14.RData"))
+
+x<-x[,c(1:4,80:151)]
+x<-x[-c(484:490),]
+
+LIST <- list(x$RT.B.HHM.C1.1[x$Age<18],x$RT.B.HHM.C1.1[x$Age>18])
+
+overlap(LIST,plot=T)
+
+@
+
+
+<<include=FALSE, eval=FALSE>>=
+DATA<-read.csv(paste0(datadir,"EngTurk.csv"))
+
+# parole alta e bassa freq Inglese
+table(DATA$item[DATA$ItemType == "High_freq" & DATA$Language == "English"])
+table(DATA$item[DATA$ItemType == "Low_freq" & DATA$Language == "English"])
+# blue eyes 
+# foreign business
+
+x1 <- DATA$ReactionTime[DATA$item == "blue eyes"]
+x2 <- DATA$ReactionTime[DATA$item == "foreign business"]
+LIST <- list(x1,x2)
+overlap(LIST, plot = TRUE)
+
+library(psych)
+skew(x1)
+skew(x2)
+kurtosi(x1)
+kurtosi(x2)
+mean(x1)
+mean(x2)
+sd(x1)
+sd(x2)
+# permutation test
+
+permTest(LIST)
+
+
+
+@
+
+
+\end{document}
+
+
+
+\end{document}
