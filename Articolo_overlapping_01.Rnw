@@ -36,7 +36,7 @@ datadir <- paste0(main,"data/")
 \begin{document}
 
 \title{Implementing significance testing for the Overlapping Index using Permutation Test}
-\author{Ambra Perugini, Massimo Nucci, Livio Finos, Massimiliano Pastore}
+\author{Ambra Perugini, Giulia Calignano, Massimo Nucci, Livio Finos, Massimiliano Pastore}
 
 \maketitle
 
