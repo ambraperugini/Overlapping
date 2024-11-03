@@ -1,6 +1,11 @@
-\documentclass[10pt]{article}
+
+
+
+\documentclass[twocolumn]{article}
+%\documentclass[10pt]{article}
 \usepackage{color}
 \usepackage[italian,english]{babel}
+\usepackage{hyperref}
 \usepackage[margin=2cm]{geometry}
 \usepackage{bm}
 \usepackage{tikz}
@@ -8,12 +13,15 @@
 \usepackage{amsmath,amssymb}
 \usepackage{apacite}
 \usepackage[bottom]{footmisc} 
+
+\newcommand\BibTeX{{\rmfamily B\kern-.05em \textsc{i\kern-.025em b}\kern-.08em
+T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 <<include=FALSE>>=
 library(knitr)
 options(digits=3)
 opts_chunk$set(fig.width=3, fig.height=3, dev="tikz",fig.align='center',echo=FALSE,results="hide",comment=NA,prompt=FALSE,warning=FALSE, cache = TRUE)
 @
-
+\usepackage[colorlinks,bookmarksopen,bookmarksnumbered,citecolor=red,urlcolor=red]{hyperref}
 \usepackage{float}
 \floatstyle{boxed}
 \newfloat{program}{btp}{lop}
@@ -34,9 +42,10 @@ datadir <- paste0(main,"data/")
 
 
 \begin{document}
+\SweaveOpts{concordance=TRUE}
 
-\title{Implementing significance testing for the Overlapping Index using Permutation Test}
-\author{Ambra Perugini, Giulia Calignano, Massimo Nucci, Livio Finos, Massimiliano Pastore}
+\title{\textbf{\textit{How do my distributions differ?} \\ Significance testing for the Overlapping Index \\ using Permutation Test}}
+\author{Ambra Perugini $^1$, Giulia Calignano $^1$, Massimo Nucci $^2$, Livio Finos $^3$, Massimiliano Pastore $^1$}
 
 \maketitle
 
@@ -199,13 +208,41 @@ permTest <- function( xList, B = 1000, ov.type = c("1","2")) {
 
 @
 
-%\section{Introduction}
+\begin{abstract}
+The present contribution aims to compare both commonly and less commonly used statistical methods in psychological sciences to evaluate their utility in tailored cases. Specifically, the paper proposes applying the Permutation test alongside the Overlapping index to estimate effects of interest in psychological science. Starting from real and openly available data, we simulated different scenarios focusing on residual distribution characteristics.  The present contribution provides practical tools for considering, and deciding which statistical methods are useful and sufficient considering the features of data distribution. Subsequently, we present a Simulation study to illustrate the practical implications and reliability of each approach, particularly valuable in scenarios commonly encountered in quantitative psychology, where navigating data characteristics and adhering to or deviating from test assumptions is crucial. The findings underscore the necessity of choosing statistical methods that are resilient to the complexities inherent in psychological data, where assumption violations are often inevitable.
+\end{abstract}
 
-%%% It is also optimal when the assumptions of linear regression (i.g. normality, homoschedasticity etc.) are not met, as the index is calculated on the empirical distributions \cite{pastore2015analisi}. If we think about a t-test, which is a comparison of two groups on a given variable, it is a simple form of linear regression and therefore relies on the assumptions of the residuals. There are cases, such as reaction times, when said assumptions would be violated if not properly taken into account. There are cases in which you could even have same mean in two populations over a given variable, but the distributions differ in other parameters in a way that they are actually very different from each other (see figure \ref{fig:equalmeans}).
+
+\section{Statistical testing choices in Psychology}
+
+    Methodological choices in cognitive and behavioral sciences aim to combine data richness with data collection feasibility, and at the same time they aim to land on valid interpretation based on reliable and robust statistical methods. Classic examples, like reaction times, demonstrate how specific measures have achieved such an acceptable trade-off, and for example, this is true even by comparing the framework of in lab \textit{vs} online data collection \cite{semmelmann2017online}. Nevertheless, even in the fortunate case of reaction times which have widespread and solid epistemic rationale of use \cite{grosjean2001timing, proctor2018hick, silverman2010simple} significance testing often relies on the rigid application of a few statistical methods that have gained popularity among the scientific community and are perpetrated \textit{perinde ac cadaver} by formal guidelines \cite{cumming2012statistical}, even if their limits and risks have always been noted in the field of psychology and beyond \cite{boneau1960effects}. 
+    
+    In fact, there is a growing caution against blindly using statistical tools and analytical methods without a deep understanding of their assumptions and implications \cite{scheel2021hypothesis}. In other words, it is increasingly apparent that relying solely on significance testing as a trustworthy measure is improbable without considering the assumptions inherent to specific statistical methods, such as the t-test, across various scenarios in psychology. In fact, considering the particular circumstances of application has consistently been crucial advice when deciding on significance testing methods \cite{fisher1925theory}.
+    
+    \vspace{0.2cm}
+    
+    The present contribution aims to compare both commonly and less commonly used statistical methods in psychological sciences to evaluate their utility in specific and tailored cases. Through an illustrative example, we re-analyze reaction times coming from a real and available dataset of a reading task with high- and low-frequency words. Specifically, the present work proposes applying the Permutation test \cite{pesarin2010permutation} alongside the Overlapping index \cite{pastore2019measuring} to estimate effects of interest in psychological sciences. 
+Of note, the proposed approach is practically declined by using a word reading study, however the very same logic can extend to other measures in psychology sciences. Importantly, by simulating different scenarios focusing on residual distribution characteristics, the paper provides practical tools for considering, and deciding which statistical methods are useful and sufficient considering the features of data distribution. Understanding and applying significance testing properly is crucial to deriving meaningful conclusions from psychological research. Accordingly, we offer practical and reproducible tools to manage the assumptions underlying these analytical approaches, and increase awareness in significance testing in psychology.
+
+\vspace{0.2cm}
+In particular, when the assumptions of linear regression, such as normality and homoscedasticity, are not met, alternative methods become optimal. The use of indices calculated on empirical distributions is particularly beneficial when these assumptions are violated \cite{pastore2015analisi}. Specifically, when using a t-test to compare two groups or two experimental conditions using a given variable, it functions as a straightforward version of linear regression. This statistical process necessitates assumptions about the residuals, such as their independence and normal distribution, to be met. In cases such as reaction times, these assumptions might be violated if they are not properly addressed. Sometimes, two populations might present the same mean for a given variable, yet their distributions largely differ in other parameters, leading to genuinely distinct groups (see figure \ref{fig:equalmeans}).
+
+\vspace{0.2cm}
+The remainder of this article is structured as follows. First, we introduce the concept of the Overlapping Index, providing foundational definitions and highlighting its importance. Next, we define the Permutation approach and explore its application to the Overlapping Index, showcasing its relevance in statistical analysis. Subsequently, we present a Simulation study to illustrate the practical implications and reliability of the overlapping index utilizing permutations.
+
+In the following section, we compare several statistical tests: the t-test for independent samples assuming equal variance, the Welch test for independent samples, the Wilcoxon test for independent samples, the Permutation test on the complement of the Overlapping index ($\zeta$ = 1 − $\eta$), which serves as a measure of intergroup differences, the F test for homogeneity of variances, and the Kolmogorov-Smirnov test for comparing two distributions.
+
+The rationale behind these steps involves first introducing the concept of the Overlapping Index ($\eta$), which is crucial because it provides an intuitive measure of similarity between distributions by quantifying the overlapping area of their probability density functions, a common question in quantitative psychology. The Permutation approach is then defined and applied to the Overlapping Index, demonstrating how non-parametric methods can offer insights without relying on typical parametric assumptions. Specifically, the Permutation test involves shuffling data points to generate a sampling distribution, allowing the calculation of a p-value and highlighting its utility in assessing the statistical significance of the Overlapping Index. Next, a Simulation study uses a real dataset to simulate various scenarios that might meet or violate the assumptions of different statistical tests, modeling a range of conditions reflective of real-world complexities in psychological research. This simulation facilitates the evaluation of the statistical power (probability of correctly rejecting a false null hypothesis) and the type I error rate (likelihood of incorrectly rejecting a true null hypothesis) of each approach. To this end, several statistical tests are compared: the t-test for independent samples, assuming equal variances; the Welch test, which does not assume equal variances; the Wilcoxon test, suitable for ordinal data or when normality is not assumed; the Permutation Test on the Overlapping Index Complement ($\zeta$ = 1 − $\eta$), providing a non-parametric approach to evaluate intergroup differences; the F test for examining the homogeneity of variances; and the Kolmogorov-Smirnov test for comparing two distributions regardless of their underlying forms. These results enable researchers to visualize and comprehend the reliability and utility of each approach, particularly valuable in scenarios commonly encountered in quantitative psychology, where navigating data characteristics and adhering to or deviating from test assumptions is crucial.
+
+Finally, we discuss the results, offering insights into the strengths and limitations of the Permutation-based Overlapping index and its potential applications in psychological sciences.
 
 \section{Overlapping Index}
 
-The overlapping index ($\eta$) is an intuitive way to define the area intesected by two or more probability density functions \cite{pastore2019measuring}. In a simple way, two distributions are similar when their distribution functions overlap, and as $\eta$ diminishes, the two distributions differ. The index $\eta$ of two empirical distributions varies from zero -- when the distributions are completely disjoint -- and one -- when they are completely overlapped \cite{pastore2018overlapping}. The simple interpretation of the overlapping index ($\eta$) makes its use particularly suitable for many applications \cite{moravec1988sensor, viola1997alignment, inman1989overlapping, milanovic2002decomposing}.
+Cognitive and experimental researchers regularly strive to uncover evidence that supports their hypotheses by examining statistical differences or similarities among groups or conditions. Frequently, this involves measuring the difference between two distribution within the same dependent variable, basically relying on their mean values using metrics like the t statistic, Cohen's \textit{d}, or \textit{U} statistics. The goal in each scenario is to estimate the magnitude of these differences to identify them as significant effects. However, a complementary perspective can be gained through the overlapping index ($\eta$), which intuitively quantifies the common area between two or more probability density functions. This measure serves as an additional tool for comparing distributions, where greater overlap indicates similarity, and a decrease in $\eta$ signals divergence \cite{pastore2019measuring}.
+
+\vspace{0.2cm}
+
+The index $\eta$ of two empirical distributions varies from zero -- when the distributions are completely disjoint -- and one -- when they are completely overlapped \cite{pastore2018overlapping}. The simple interpretation of the overlapping index ($\eta$) makes its use particularly suitable for many applications \cite{moravec1988sensor, viola1997alignment, inman1989overlapping, milanovic2002decomposing}.
 
 Assuming two probability density functions $f_A (x)$ and $f_B (x)$, the overlapping index $\eta: \mathbb{R}^n \times \mathbb{R}^n \to [0,1] $ is formally defined in the following way:
 
@@ -370,9 +407,11 @@ To evaluate the performance of the permutation test applied to the overlapping i
 
 In the simulation, two density distributions will be compared for many different scenarios. The first distribution will always be a normal standard distribution with $\mu = 0$ and $\sigma = 1$. 
 To simulate data for the second distribution we use the Skew-Normal distribution \cite{azzalini:1985}, which is defined in the following way: given $\xi \in \mathbb{R}$, $\omega \in \mathbb{R}^{+}$ and $\alpha \in \mathbb{R}$, then for $y \in \mathbb{R}$ we have  
-\begin{eqnarray}
-\mathcal{SN}(y|\xi, \omega, \alpha) = \frac{1}{\omega \sqrt{2\pi}} exp \left[ -\frac{1}{2} \left( \frac{y-\xi}{\omega} \right)^2  \right] \left[ 1+ \text{erf}\left( \alpha \left( \frac{y-\xi}{\omega\sqrt{2}}\right) \right) \right]
-\end{eqnarray} 
+\begin{equation}
+\resizebox{\columnwidth}{!}{$
+\mathcal{SN}(y|\xi, \omega, \alpha) = \frac{1}{\omega \sqrt{2\pi}} \exp \left[ -\frac{1}{2} \left( \frac{y-\xi}{\omega} \right)^2  \right] \left[ 1+ \text{erf}\left( \alpha \left( \frac{y-\xi}{\omega\sqrt{2}}\right) \right) \right]
+$}
+\end{equation}
 in which $$\text{erf}(z) = \frac{2}{\sqrt{\pi}} \int_{0}^{z} e^{-t^2} dt $$ is the \emph{error function}.
 When $\xi = 0$, $\omega = 1$ and $\alpha = 0$ the distribution is a standard normal distribution.
 
@@ -614,7 +653,7 @@ H_0: P(X_1 > X_2) = P(X_2 > X_1) = 0.5
 
 in which $X_1$ and $X_2$ are the random variables representing the observations extracted from the two populations. In this case, the only scenario in which $H_0$ is true is in panel [1].
 
-\subsubsection{$\zeta$ permutation test}
+\subsubsection{ $\zeta$  permutation test}
 
 Since $\zeta = 1 - \eta$, in which $\eta$ is the area of overlapping of the empirical distributions, the null hypothesis of the test is $$H_0: \zeta = 0$$ which implies that the data comes from the same population, or from populations with same shape (mean, variance and skewness). Therefore, the only condition in which $H_0$ is true is the first panel. 
 
@@ -624,7 +663,7 @@ This is the test of homogeneity of variances $$H_0: \sigma^2_1 = \sigma^2_2$$ th
 
 \subsubsection{Kolmogorov-Smirnov test}
 
-This test compares the cumulative distributions $$H_0: F(X_1) = F(X_2)$$ therefore, the null hypothesis should be true in panel [1], as it is for the $\zeta$ permutation test.
+This test compares the cumulative distributions $$H_0: F(X_1) = F(X_2)$$ therefore, the null hypothesis should be true in panel [1], as it is for the  $\zeta$  permutation test.
 
 Taking into account those null hypothesis and assumptions, we will compute type I error by counting how many times the test is significant when the null is true, and the power by counting how many times it will be significant when $H_0$ is not true. Then we will consider separately the cases in which assumptions are respected and when they are not.
 
@@ -779,10 +818,97 @@ plot_grid(
 
 
 %%\subsection{gara tra $\zeta$ perm da solo e t-test, ks e var test }
+\section*{Comparison of Statistical Tests Across Simulated Scenarios}
+
+In this analysis, we compared the performance of several statistical significance tests across different simulated scenarios starting from a real data collection, where assumptions were either met or violated, and the null hypothesis (\(H_0\)) was either true or false. The simulation study starting from the real dataset emerged to be an informative approach that allowed to evaluate the significance testing performance across statistical test knowing the \textit{ground truth} beyond the data generation. The tests evaluated include both parametric (e.g., T-test, Welch test, F-test for variance) and non-parametric tests (e.g., Wilcoxon Signed-Rank, Kolmogorov-Smirnov, and permutation-based tests, including $\zeta$ permutation). Each scenario provides insight into the robustness, power, and Type I error control of these methods under varied conditions. 
+
+\subsection*{Scenario A: \(H_0\) True, Assumptions Met}
+
+In Scenario A, where \(H_0\) is true and the assumptions are satisfied, all tests ideally should maintain Type I error close to the nominal level of 0.05. Here, we observe that:
+
+\begin{itemize}
+    \item The \textbf{T-test} and \textbf{Welch test} control Type I error well, as expected for parametric tests under ideal conditions. The Welch test shows slightly more variability in Type I error, likely due to its adjustment for unequal variances, though this remains within an acceptable range.
+    \item The \textbf{Wilcoxon Signed-Rank test} and the \textbf{Kolmogorov-Smirnov (KS) test} appear slightly conservative, producing Type I error rates below the nominal level. This conservative behavior is typical of non-parametric tests that are more robust to non-normality, though they may reduce sensitivity when assumptions are fully met.
+    \item The \textbf{ $\zeta$  permutation test} is also conservative, which could indicate its suitability for controlling Type I error in scenarios where overlap between distributions is the focus. 
+    \item The \textbf{permutation-based T-test} and \textbf{F-test} yield Type I error rates close to the nominal level, benefiting from the flexibility of permutation-based p-value calculation even when assumptions are met.
+\end{itemize}
+
+In summary, under ideal conditions, most tests perform as expected, with parametric tests aligning closely with the nominal Type I error and non-parametric and permutation methods showing slight conservatism.
+
+\subsection*{Scenario B: \(H_0\) False, Assumptions Met}
+
+When \(H_0\) is false and assumptions are met (Scenario B), power is the primary metric of interest. Here, we find:
+
+\begin{itemize}
+    \item The \textbf{Welch test} demonstrates high power, surpassing the T-test as sample size increases, due to its flexibility with unequal variances. This makes it a robust choice when variances may differ even if assumptions of normality are met.
+    \item The \textbf{permutation-based T-test} and \textbf{ $\zeta$  permutation test} also exhibit high power, highlighting their effectiveness in detecting true effects without relying on strict distributional assumptions.
+    \item Non-parametric tests, such as the \textbf{Wilcoxon} and \textbf{KS} tests, show moderate power, though they are generally less sensitive to mean differences than parametric alternatives. Their focus on distribution shapes or ranks limits their power when mean differences are the primary effect.
+\end{itemize}
+
+In this scenario, the Welch test and permutation-based methods emerge as highly effective for detecting differences, especially when variances may differ, while non-parametric tests are somewhat limited in sensitivity.
+
+\subsection*{Scenario C: \(H_0\) True, Assumptions Violated}
+
+When assumptions are violated but \(H_0\) remains true (Scenario C), Type I error control becomes crucial. This scenario reveals the robustness of each test under non-ideal conditions:
+
+\begin{itemize}
+    \item The \textbf{Welch test} maintains Type I error control effectively, showcasing its robustness to heteroscedasticity and other violations. This highlights its utility in practical scenarios where equal variance cannot be guaranteed.
+    \item The \textbf{permutation-based tests} (both for means and variances) also perform well, maintaining Type I error near the nominal level, thanks to their non-parametric approach to p-value calculation. 
+    \item The \textbf{T-test} and \textbf{Variance (F) test} exhibit increased sensitivity to assumption violations, particularly the F-test, which shows inflated Type I error rates under heteroscedasticity and non-normality. This sensitivity reduces their reliability in practical applications where assumptions are not met.
+    \item Non-parametric tests, like the \textbf{Wilcoxon} and \textbf{KS tests}, handle assumption violations effectively, producing conservative Type I error rates. Their robustness to non-normality makes them a safer choice when parametric assumptions are doubtful.
+\end{itemize}
+
+Under assumption violations with a true null hypothesis, the Welch and permutation-based tests stand out as reliable choices, while the F-test is notably sensitive to violations.
+
+\subsection*{Scenario D: \(H_0\) False, Assumptions Violated}
+
+In the final scenario, where both \(H_0\) is false and assumptions are violated (Scenario D), the adaptability of each test is evaluated under the most challenging conditions:
+
+\begin{itemize}
+    \item The \textbf{Welch test} maintains high power, adapting well to heteroscedasticity and other assumption violations. This underscores its suitability for real-world data where variances may be unequal and normality cannot be assumed.
+    \item The \textbf{permutation-based T-test} and \textbf{ $\zeta$  permutation test} also demonstrate strong performance, showing that permutation-based approaches can be powerful alternatives when assumptions do not hold.
+    \item Non-parametric tests like \textbf{Wilcoxon} and \textbf{KS} show moderate power but generally lag behind parametric tests in detecting mean differences. They remain robust to assumption violations but are less efficient in detecting differences in means, particularly with skewed distributions.
+    \item The \textbf{Variance (F) test} performs poorly in this scenario, with both reduced power and increased error rates, underscoring its sensitivity to assumption violations. Its reliance on equal variance assumptions makes it unsuitable in situations where homoscedasticity cannot be assured.
+\end{itemize}
+
+In this scenario, the Welch test and permutation methods again emerge as the most adaptable, providing good power even when assumptions are substantially violated.
+
+\subsection*{Correlation Analysis of p-values}
+
+An analysis of p-value correlations among tests provides additional insights. The high correlation between the \textbf{T-test} and \textbf{Welch test} reflects their similar objectives, particularly in testing mean differences. However, the lower correlations between parametric and non-parametric tests, such as the \textbf{Wilcoxon} and \textbf{KS} tests, indicate that these tests capture different aspects of the data (e.g., ranks or distribution shapes rather than means). The \textbf{permutation-based tests} exhibit intermediate correlations with both parametric and non-parametric methods, indicating that their results may align with both types depending on the underlying data structure.
+
 
 \section{Discussion}
+The present analysis evaluated the performance of various statistical significance tests across simulated scenarios that altered whether the null hypothesis (\(H_0\)) is true or false and whether the assumptions required by each test are met. The tests include both parametric (such as the T-test, Welch test, and F-test for variance) and non-parametric methods (such as the Wilcoxon Signed-Rank, Kolmogorov-Smirnov, and permutation-based approaches including the $\zeta$ permutation test). Through these scenarios, we assess each test's robustness, Type I error control, and power under ideal and non-ideal conditions.
 
-\newpage
+In \textbf{Scenario A} (true \( H_0 \), assumptions met), the T-test, Welch test, and permutation-based tests maintain Type I error close to the nominal level of 0.05, with the Welch test showing minor variability due to its robustness to variance differences. Non-parametric tests (Wilcoxon, KS, \( \zeta \)-permutation) are conservative, slightly undershooting the nominal error—a typical trade-off for robustness.
+
+In \textbf{Scenario B} (false \( H_0 \), assumptions met), power is key. The Welch test excels as sample sizes grow, especially with unequal variances, while permutation-based tests (T-test, \( \zeta \)) show strong power, making them effective in detecting true effects without strict distributional requirements. Non-parametric tests display moderate power, better suited for cases where shape differences are of interest rather than mean differences.
+
+\textbf{Scenario C} (true \( H_0 \), assumptions violated) tests robustness. The Welch and permutation-based tests maintain Type I control under assumption violations, whereas parametric T and F-tests struggle, particularly with heteroscedasticity. Non-parametric tests (Wilcoxon, KS) remain conservative and reliable, showing resilience to non-normality.
+
+Finally, in \textbf{Scenario D} (false \( H_0 \), assumptions violated), the Welch test and permutation-based tests (T-test, \( \zeta \)) stand out with high power and robustness, ideal for real-world data with heteroscedasticity or non-normality. Non-parametric tests retain robustness but lack power, while the F-test proves unreliable under these challenging conditions.
+
+Further analysis of p-value correlations among the tests provides additional insight into their relationships. High correlation between the T-test and Welch test, for instance, reflects their similar objectives and shared focus on mean differences. However, lower correlations between parametric and non-parametric methods, such as the Wilcoxon and KS tests, indicate that these tests capture distinct aspects of the data, such as ranks or distribution shapes rather than means. The permutation-based tests show intermediate correlations with both parametric and non-parametric methods, which suggests that they may align with either type of test depending on the underlying data structure.
+
+\subsection*{Advantages and Limitations of the $\zeta$ Permutation Test}
+
+The \textbf{$\zeta$  permutation test}, designed to measure the degree of overlap between distributions, has specific advantages and limitations. Its main strength lies in its robustness to distributional assumptions, as it calculates p-values through permutations rather than relying on parametric assumptions like normality or equal variance. This makes it particularly useful in scenarios where other tests may fail due to assumption violations, providing a conservative Type I error rate when \(H_0\) is true and robust power when \(H_0\) is false.
+
+However, the $\zeta$ permutation test's conservative nature may limit its sensitivity in detecting small mean differences, especially when distributions overlap substantially. Its design focuses on distributional overlap rather than mean differences, which means it may lack power relative to parametric tests that specifically target mean shifts. In scenarios where the primary effect is a shift in central tendency rather than overlap, the $\zeta$ permutation test may not be the optimal choice.
+
+The $\zeta$ permutation test is indeed a valuable tool for non-parametric inference, particularly when distributional assumptions do not meet those required by common statistical test e.g. t-test. These are particularly relevant points given that in psychological sciences studies often involve small sample sizes, and relying on small changes in location parameters like the mean can be risky. For example, small samples are highly susceptible to the influence of extreme values, which can skew the mean and lead to misleading conclusions about effect sizes. On the contrary, as demonstrated in simulations, the $\zeta$ permutation test is less prone to being dramatically impacted by extreme values, as it directly measures the distributional overlap between groups rather than focusing solely on mean differences. This characteristic makes the  $\zeta$ permutation test particularly valuable in small-sample contexts, like in psychological science where robustness to outliers is critical for obtaining reliable insights into group differences.
+
+
+
+\section{Conclusion}
+By exploring alternative scenarios, the study offers practical indication to operate a shift in the philosophical approach to data analysis and significance testing. In fact, the Overlapping index forces the functional interpretation of the results to move beyond significance testing alone \cite{pastore2018overlapping, steegen2016increasing, gelman2018failure}. In psychological research, considering the distribution of data rather than relying solely on significance testing offers a deeper, more nuanced understanding of results. Traditional significance testing doesn't provide information about the nature or magnitude of that effect. By visualizing and considering the entire distribution of data, researchers can observe the spread, central tendency, and shape of the data, which often reveal valuable insights about variability and individual differences within the sample.  As presented in Figure 1, reporting a mean difference without an understanding of the data's variability could misrepresent the consistency or generalizability of the observed effect. Therefore, incorporating distributional analyses allows psychologists to present a fuller picture of their findings, improving both interpretability and transparency in their research conclusions. 
+
+Moreover, the present study further underscores the necessity of selecting the most suitable statistical tools contingent on the specific characteristics of the data and the assumptions inherent in the analytical techniques employed. Such a switch in the philosophical approach to data analysis in psychological sciences \cite{vasishth2021embrace} may improves the robustness and validity of psychological research findings, allowing for more aware interpretations and generalizations. We stress this by making open available data and material so that such an approach might be useful for a wide range of psychologists interested in increasing the understandability of their results. 
+
+The findings underscore the necessity of choosing statistical methods that are resilient to the complexities inherent in psychological data, where assumption violations are often inevitable. Tests like the Welch and $\zeta$ permutation tests exemplify robust alternatives that accommodate data with unequal variances or non-normal distributions, offering reliable results even when classic parametric conditions are unmet. In this way, these tools extend the flexibility of significance testing, enabling a nuanced understanding of effects in psychology.
+
+Ultimately, statistics in psychology should reflect both theoretical knowledge and an appreciation for the distributional nuances of psychological variables. Rather than a rigid application of conventional methods, statistical analysis should be a deliberate choice that aligns with the nature of the data and the research question. Approaches such as the overlapping index and permutation-based methods embody this principle, capturing the depth and complexity of psychological effects in a way that is both methodologically rigorous and sensitive to the real-world structure of psychological phenomena.
 
 \section{Legenda}
 
@@ -804,7 +930,18 @@ $\delta$ is the difference between the two means
 
 
 
-\newpage
+\section{Ethical considerations}
+Ethical approval was not required
+
+\section{Conflicting interest}
+The authors declare no conflict of interests.
+
+\section{Funding statement}
+No Funding supported this project.
+
+\section{Data availability statement}
+Data and materials to reproduce the present work are openly available at \href{https://github.com/ambraperugini/Overlapping}{GitHub} 
+
 \bibliographystyle{apacite}
 \bibliography{overlap}
 
