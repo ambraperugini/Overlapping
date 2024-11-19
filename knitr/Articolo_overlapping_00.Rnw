@@ -1,0 +1,514 @@
+\documentclass{article}
+\usepackage[italian,english]{babel}
+\usepackage[margin=2cm]{geometry}
+\usepackage{bm}
+\usepackage{tikz}
+\usepackage[utf8x]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{apacite}
+<<include=FALSE>>=
+library(knitr)
+options(digits=3)
+opts_chunk$set(fig.width=3, fig.height=3, dev="tikz",fig.align='center',echo=FALSE,results="hide",comment=NA,prompt=FALSE,warning=FALSE, cache = TRUE)
+@
+
+<<>>=
+rm(list=ls())
+#main <- "/Users/ambraperugini/Library/CloudStorage/OneDrive-UniversitàdegliStudidiPadova/Lavoro/Overlapping/"
+
+main <- "/home/bayes/lavori/overpermutation/"
+datadir <- paste0(main,"data/")
+# KUtils::pulizia(paste(main,"knitr/",sep=""), c(".Rnw",".bib","pdf"),TRUE)
+@
+
+
+\begin{document}
+
+\title{Implementing significance testing for the Overlapping Index using Permutation Test}
+\author{Ambra Perugini, Massimo Nucci, Livio Finos, Massimiliano Pastore}
+
+\maketitle
+
+<<>>=
+# ++++++++++++++++++++++++++++++++++++++++++
+betapar <- function(mx,sx,n=NULL) {
+  vx <- sx^2
+  if (vx<(mx*(1-mx))) {
+    pezzo <- ((mx*(1-mx))/vx)-1
+    a <- mx*pezzo
+    b <- (1-mx)*pezzo
+  } else {
+    warning("adjusted formula by using n")
+    a <- mx*n
+    b <- (1-mx)*n
+  }
+  return(list(a=a,b=b))
+}
+
+# +++++++++++++++++++++++++++++++
+#' @name min_normal_uniform
+#' @description Calcola il minimo tra la densità di una normale e di una uniforme
+#' @param x = x vector
+#' @param normPars = parametri della normale: media e dev. standard
+#' @param unifPars = parametri della uniforme: minimo e massimo
+#' #' @param return.all = logical, if \code{TRUE} restituisce il data set completo delle densità delle due distribuzioni
+min_normal_uniform <- function( x = NULL, normPars = c(0,1), unifPars = c(0,1), return.all = FALSE ) {
+  
+  if (is.null(x)) x <- seq(-5,5,by=.1)
+  
+  y1 <- dnorm(x, normPars[1], normPars[2])
+  y2 <- dunif(x, unifPars[1], unifPars[2])
+  dy <- ifelse(y1<y2, y1, y2)
+  
+  gData <- data.frame( x, y1, y2, dy )  
+  
+  if (return.all) {
+    return( list( gData = gData ) )
+  } else {
+    return( dy )  
+  }
+
+}
+
+# ++++++++++++++++++++++++++++++++++++++++++
+#' @name min_dskew_normal
+#' @description Calcola il minimo tra due densità Skew-Normal
+#' @note La prima densità ha i parametri fissati \code{xi = 0}, 
+#' \code{omega = 1}, \code{alpha = 0}, per cui di fatto è normale standard
+#' @param x = x vector
+#' @param xi = location parameter
+#' @param omega = scale parameter
+#' @param alpha = skewness parameter
+#' @param plot = logical, if \code{TRUE} produce la rappresentazione grafica delle densità 
+#' e dell'area di sovrapposizione
+#' @param return.all = logical, if \code{TRUE} restituisce il data set completo delle densità delle due distribuzioni
+min_dskew_normal <- function( x = seq( -5, 5, by = .01 ), xi = 0, omega = 1, alpha = 0, 
+                              return.all = FALSE ) {
+  
+  require( sn )
+  y1 <- dsn( x, xi = 0, omega = 1, alpha = 0 )
+  y2 <- dsn( x, alpha = alpha, xi = xi, omega = omega )
+  dy <- ifelse( y1 < y2, y1, y2 )
+  gData <- data.frame( x, y1, y2, dy )  
+  
+  if (return.all) {
+    return( list( gData = gData ) )
+  } else {
+    return( dy )  
+  }
+}
+
+# ++++++++++++++++++++++++++++
+permTest <- function( xList, B = 1000) {
+  require(overlapping)
+  N <- unlist( lapply(xList,length) )
+  zobs <- 1-overlap( xList )$OV
+  
+  zperm <- sapply(1:B, function(b){
+    xperm <- sample( unlist( xList ) )
+    xListperm <- list( x1 = xperm[1:N[1]], x2 = xperm[(N[1]+1):(sum(N))] )
+    1 - overlap( xListperm )$OV
+  })
+  
+  L <- list(zobs=zobs,zperm=zperm,pval=sum( zperm > zobs ) / length(zperm))
+  
+  return(L)
+}
+
+# ++++++++++++++++++++++++++++
+permTest_t <- function( xList, B = 1000) {
+  
+  N <- unlist( lapply(xList,length) )
+  tobs <- t.test(xList[[1]], xList[[2]], var.equal=TRUE)$statistic
+  
+  tperm <- sapply(1:B, function(b){
+    xperm <- sample( unlist( xList ) )
+    xListperm <- list( x1 = xperm[1:N[1]], x2 = xperm[(N[1]+1):(sum(N))] )
+    t.test(xListperm[[1]], xListperm[[2]], var.equal=TRUE)$statistic
+  })
+  
+  L <- list(tobs=tobs,tperm=tperm,pval=sum( tperm > tobs ) / length(tperm))
+  
+  return(L)
+}
+
+@
+
+%\section{Introduction}
+
+ It is also optimal when the assumptions of linear regression (i.g. normality, homoschedasticity etc.) are not met, as the index is calculated on the empirical distributions \cite{pastore2015analisi}. If we think about a t-test, which is a comparison of two groups on a given variable, it is a simple form of linear regression and therefore relies on the assumptions of the residuals. There are cases, such as reaction times, when said assumptions would be violated if not properly taken into account. There are cases in which you could even have same mean in two populations over a given variable, but the distributions differ in other parameters in a way that they are actually very different from each other (see figure \ref{fig:equalmeans}).
+
+\section{Overlapping Index}
+
+The overlapping index ($\eta$) is an intuitive way to define the area intesected by two or more probability density functions \cite{pastore2019measuring}. In a simple way, two distributions are similar when their distribution functions overlap, and as $\eta$ diminishes, the two distributions differ. The index $\eta$ of two empirical distributions varies from zero -- when the distributions are completely disjoint -- and one -- when they are completely overlapped \cite{pastore2018overlapping}. The simple interpretation of the overlapping index ($\eta$) makes its use particularly suitable for many applications \cite{moravec1988sensor, viola1997alignment, inman1989overlapping, milanovic2002decomposing}.
+
+
+%Before delving into the application of the permutation test to the overlapping index, let us quickly define statistially the overlappign index. 
+
+Assuming two probability density functions $f_A (x)$ and $f_B (x)$, the overlapping index $\eta: \mathbb{R}^n \times \mathbb{R}^n \to [0,1] $ is formally defined in the following way:
+
+
+\begin{eqnarray}
+\eta (A,B) = \int_{\mathbb{R}^n} min [f_A (x),f_B (x)] dx
+\end{eqnarray} 
+
+where, in the discrete case, the integer can be replaced by summation. As previously mentioned, $\eta (A,B)$ is normalized to one and when the distributions of A and B do not have points in common, meaning that $f_A (x)$ and $f_B (x)$ are disjoint, $\eta (A,B) = 0$. This index provides an intuitive way to quantify the agreement between $A$ and $B$ based on their density functions \cite{inman1989overlapping}. 
+
+<<>>=
+normPars <- c(10,2)
+unifPars <- c(0,20)
+n <- 30 
+@
+
+
+
+
+\vspace{.3cm}
+
+In teoria... 
+$y_1 \sim \text{Normal}(\Sexpr{normPars})$ 
+$y_2 \sim \text{Unif}(\Sexpr{unifPars})$  
+
+The true $\eta = \Sexpr{round( integrate( min_normal_uniform, -Inf, Inf, normPars = normPars, unifPars = unifPars )$value, 2) }$
+
+
+\vspace{.3cm}
+To quickly illustrate a visual representation of the overlapping area in two given distributions we present the following example: a sample of \Sexpr{n} observations generated from a normal distribution with mean of \Sexpr{normPars[1]} and standard deviation on \Sexpr{normPars[2]} and a sample of \Sexpr{n} generated from a random uniform with the minimum value of 0 and the maximum of \Sexpr{unifPars[2]}.
+
+
+
+<<warning=FALSE,message=FALSE>>=
+library(overlapping)
+set.seed(36)
+
+x <- rnorm(n, normPars[1], normPars[2])
+y <- runif(n, unifPars[1], unifPars[2])
+
+LIST<-list(x,y)
+OV <- overlap(LIST)
+TTEST <- t.test(x,y, var.equal = TRUE)
+
+Y <- stack( data.frame(y1=x,y2=y) )
+
+@
+
+The figure \ref{fig:equalmeans} shows how two distributions with almost same mean could still be very different from each other with the overlapping area being $\hat{\eta} = \Sexpr{round(OV$OV,2)}$. 
+
+
+<<>>=
+myData <- data.frame( x = seq(0,20,by=.1) )
+myData$y1 <- dnorm(myData$x, normPars[1], normPars[2] )
+myData$y2 <- dunif(myData$x, unifPars[1], unifPars[2])
+myData$h <- with(myData, ifelse( y1 < y2, y1, y2 ))
+
+
+AREA <- integrate( min_normal_uniform, -Inf, Inf, normPars = normPars, unifPars = unifPars )
+
+@
+
+<<equalmeans,fig.cap="Comparison of a normal distribution and a uniform distribution with same mean.",fig.width=6>>=
+library(cowplot)
+plot_grid(
+  ggplot(myData,aes(x,y1)) + geom_line() + geom_line(aes(x,y2)) + 
+    geom_ribbon(aes(ymin=0,ymax=h), alpha = .5) + xlab("") + ylab("") + 
+    scale_y_continuous( breaks = NULL ) + ggtitle("[A]"), 
+  
+  ggplot(Y, aes(values,fill=ind,color=ind)) + geom_density(alpha = .5) + xlab("") + theme(legend.title = element_blank()) + ylab("") + 
+    scale_y_continuous( breaks = NULL ) + guides(fill="none",color="none")+ ggtitle("[B]")
+)
+
+
+@
+
+
+In this case, a t-test would not be able to detect such difference, as it does not take into account the different variance in the two groups.
+
+
+\subsubsection{application}
+
+If we are reasoning from the perspective of Null Hypothesis Significance Testing (NHST), we should define the null hypothesis as follows: $H_0: \eta = 1$,  meaning there is no difference between the distributions of data in the population. For this reason, it is more intuitive to work with the complement of $\eta$, which is  $1-\eta = \zeta$ which is the area of non-overlap, therefore, defining the null hypothesis as  $H_0:\zeta = 0$. When testing the difference between the two distributions, we will no longer be working with $\eta$, but with the complement $\zeta$. 
+
+
+
+\section{Permutation approach}
+
+ Now we will introduce another approach which does not rely on the assumptions of linear models: the permutation approach. This is a non-parametric statistical method that can be used to determine statistical significance and it is most useful when the assumptions of parametric tests are not met \cite{pesarin2010permutation}. What the test does is to rearrange the data in many different ways and recalculates the test statistic each time. If we are thinking about a simple mean comparison (a t-test), the data in the two groups are mixed over and over and the t-value is calculated each time. If the two groups come from the same population, mixing the labels should give similar results to the ones observed. Else, if the two groups come from different populations, mixing tags should lead to very different results. From the empirical density of the permuted values it is possible to calculate the p-value as the probability to obtain an equal or more extreme value compared to the observed one. 
+
+\section{Application of permutation test to the overlapping index}
+
+Even though the overlapping index has a simple interpretation, one could argue that it does not provide information on the significance of the parameter $\eta$, therefore, we decided to implement permutation testing to offer to the ones interested a value of significance. In particular, we implemented permutations test, to give a tool that tests differences in distributions in cases where other tests' assumptions would be violated.
+
+The algorithm estimates the value of $\zeta$ on the observed data ($\hat{\zeta}$). Then, through permutation, the values of the two groups are randomly re-assigned to the groups for B times, estimating again the new value of  $\hat{\zeta}_b$. The times in which the estimate of $\hat{\zeta}_b$ on permutated data is higher than the one observed on real data is estimated ($\hat{\zeta}_b > \hat{\zeta}$) and then the found value is divided by B, returning the $p$-value. This approach is equivalent to the traditional parametric tests.
+
+A typical example of data not respecting previously said assumptions is reaction times and for this purpose we present a real case of a dataset available online (citation of the OSF repository) on reaction times of word reading of high and low frequency words in English and we implement on the overlapping function the permutation test. 
+
+<<echo = FALSE>>=
+DATA<-read.csv(paste0(datadir,"EngTurk.csv"))
+
+# parole alta e bassa freq Inglese
+table(DATA$item[DATA$ItemType == "High_freq" & DATA$Language == "English"])
+table(DATA$item[DATA$ItemType == "Low_freq" & DATA$Language == "English"])
+# blue eyes 
+# foreign business
+
+low_frequency <-DATA$ReactionTime[DATA$item == "blue eyes"]
+high_frequency <- DATA$ReactionTime[DATA$item == "foreign business"]
+
+@
+
+<<reactiontimes,fig.cap="Plot of the densities of reaction times",echo=FALSE,message=FALSE, fig.width=3, fig.height=2, results='hide'>>=
+xList <- list( x1 = low_frequency, x2 = high_frequency ) 
+@
+
+
+<<>>=
+(obsz <- 1 - overlap( xList )$OV)
+@
+
+<<permtest2,fig.keep='none'>>=
+B <- 2e3
+n <- length(xList[[1]])
+zperm <- sapply( 1:B, function(x){
+  xperm <- sample( unlist( xList ) )
+  xListperm <- list( x1 = xperm[1:n], x2 = xperm[(n+1):(n*2 )] )
+  1 - overlap( xListperm )$OV
+})
+plot( density(zperm) )
+abline( v = obsz, lty = 2 )
+@
+
+<<ex2,fig.cap=paste0("$\\hat{\\zeta} = ",round(obsz,3),"$. [A] Distribution of reaction times of word reading of high and low frequency words in English; [B] Distribution of $\\hat{\\zeta}$ obtained with ",B," permutations of the data."),fig.width=6>>=
+Y <- stack(data.frame(xList))
+ZPERM <- data.frame(zperm)
+
+theme_set(theme_bw())
+cowplot::plot_grid(
+  ggplot( Y, aes(values,fill=ind,color=ind) )+geom_density(alpha = .5) + theme(legend.title = element_blank()) +xlab("") +ylab("")+guides(fill="none",color="none")+ggtitle("[A]"),
+
+  ggplot(ZPERM,aes(zperm))+geom_vline(xintercept = obsz,lty=2) +geom_density()+ggtitle("[B]")  +xlab("") +ylab("") 
+
+)
+@
+In the figure \ref{fig:ex2}[A] are represented the densities of reaction times of word reading of high and low frequency words in English; the obtained value of $\hat{\zeta}$ is \Sexpr{obsz}. In figure \ref{fig:ex2}[B] is represented the distribution of the values of $\hat{\zeta}$ obtained with \Sexpr{B} permutations; let us calculate the $p$-\emph{value}:
+
+<<results='markup',echo=TRUE>>=
+sum( zperm > obsz ) / length( zperm )
+@
+
+The difference is statistically significant and the $t$ test:
+<<results='markup'>>=
+L <- capture.output( with( xList, t.test( x1, x2 ) ) )
+
+cat("> with( xList, t.test( x1, x2 ) )","\n")
+for (j in 1:(grep("alt",L)-1)) cat(L[j],"\n")
+@
+
+
+\section{Simulation study}
+
+The aim is to distinguish mean, variance and shape of the populations and compare it to other commonly used tests. 
+
+\subsection{Data generation}
+
+In the simulation, two density distributions will be compared each time for many different scenarios. The first distribution will always be a normal standard distribution with $\mu = 0$ and $\sigma = 1$. 
+To simulate data for the second distribution we use the Skew-Normal distribution \cite{azzalini:1985}, which is defined in the following way: given $\xi \in \mathbb{R}$, $\omega \in \mathbb{R}^{+}$ and $\alpha \in \mathbb{R}$, then for $y \in \mathbb{R}$ we have  
+\begin{eqnarray}
+\mathcal{SN}(y|\xi, \omega, \alpha) = \frac{1}{\omega \sqrt{2\pi}} exp \left[ -\frac{1}{2} \left( \frac{y-\xi}{\omega} \right)^2  \right] \left[ 1+ \text{erf}\left( \alpha \left( \frac{y-\xi}{\omega\sqrt{2}}\right) \right) \right]
+\end{eqnarray} 
+in which $$\text{erf}(z) = \frac{2}{\sqrt{\pi}} \int_{0}^{z} e^{-t^2} dt $$ is the \emph{error function}.
+When $\xi = 0$, $\omega = 1$ and $\alpha = 0$ the distribution is a standard normal distribution.
+
+The parameter $\alpha$ determins the simmetry, $\xi$ is the mean value and $\omega$ determines the variance. Therefore, this distribution is suitable to generate data modelling both the distance between means (the effect size), simmetry and variance.
+
+Mean and variance of the Skew-Normal are respectively: 
+\begin{eqnarray}\label{eq:musigmaSN}
+\begin{array}{l}
+\mu = \xi + \omega \delta \sqrt{2/\pi} \\
+\sigma^2 = \omega^2 [1- (2\delta^2)/\pi]
+\end{array}
+\end{eqnarray}
+in which $\delta = \alpha / \sqrt{1 + \alpha^2}$. Based on the equations (\ref{eq:musigmaSN}) we can determine the values to assign to the parameters $\xi$ e $\omega$ in function of $\mu$ and $\sigma$ with the equations:
+
+\begin{eqnarray}\label{eq:xiomegaSN}
+\begin{array}{l}
+ \xi = \mu - \omega \delta \sqrt{2/\pi} \\
+ \omega = \sqrt{\sigma^2/ [1- (2\delta^2)/\pi]}
+\end{array}
+\end{eqnarray}
+
+The Skwe-Normal distribution is optimal for our purpuse as it allows to have control over parameters of skeness and kurtosis, as shown in figure \ref{fig:scenari}.
+
+<<scenari,fig.cap=paste0("Skew-Normal distribution ($\\xi$,$\\omega$,$\\alpha$); [A] the parameter $\\xi$ controls the mean, [B] the parameter $\\omega$ the variance and [C] the parameter  $\\alpha$ the simmetry."),message=FALSE,fig.width=8>>=
+library(sn)
+
+PARlist <- list(
+  xi_vec = c(0,.5,1),
+  omega_vec = c(1,2,3),
+  alpha_vec = c(0,1,2)
+)
+
+x <- seq(-5,5,by=.1)
+
+gData <- NULL
+for (j in 1:3) {
+  
+  # xi
+  y <- with( PARlist, dsn(x,xi_vec[j],omega_vec[1],alpha_vec[1]) )
+  xi <- PARlist$xi_vec[j]
+  omega <- PARlist$omega_vec[1]
+  alpha <- PARlist$alpha_vec[1]
+  scenario <- "xi"
+  dd <- data.frame(x,y,xi,omega,alpha,scenario)  
+  gData <- rbind(gData,dd)  
+  
+  # omega
+  y <- with( PARlist, dsn(x,xi_vec[1],omega_vec[j],alpha_vec[1]) )
+  xi <- PARlist$xi_vec[1]
+  omega <- PARlist$omega_vec[j]
+  alpha <- PARlist$alpha_vec[1]
+  scenario <- "omega"
+  dd <- data.frame(x,y,xi,omega,alpha,scenario)  
+  gData <- rbind(gData,dd)  
+   
+  # alpha
+  y <- with( PARlist, dsn(x,xi_vec[1],omega_vec[1],alpha_vec[j]) )
+  xi <- PARlist$xi_vec[1]
+  omega <- PARlist$omega_vec[1]
+  alpha <- PARlist$alpha_vec[j]
+  scenario <- "alpha"
+  dd <- data.frame(x,y,xi,omega,alpha,scenario)  
+  gData <- rbind(gData,dd)  
+  
+  
+}
+
+gData$xi <- factor(gData$xi)
+gData$omega <- factor(gData$omega)
+gData$alpha <- factor(gData$alpha)
+
+theme_set(theme_bw())
+cowplot::plot_grid(
+  ggplot(subset(gData,scenario=="xi"),aes(x,y,color=xi))+geom_line()+xlab("")+ylab("")+ggtitle("[A]")+theme(legend.position = "bottom")+labs(color="$\\xi$"),
+  
+  ggplot(subset(gData,scenario=="omega"),aes(x,y,color=omega))+geom_line()+xlab("")+ylab("")+ggtitle("[B]")+theme(legend.position = "bottom")+labs(color="$\\omega$"),
+  
+  ggplot(subset(gData,scenario=="alpha"),aes(x,y,color=alpha))+geom_line()+xlab("")+ylab("")+ggtitle("[C]")+theme(legend.position = "bottom")+labs(color="$\\alpha$"), nrow = 1
+)
+
+@
+
+\subsection{Chosen tests for comparison}
+
+In this article, we decided to compare different tests on a series of scenarios to analyse strengths and weakenesses. In particular, we will consider the following tests:
+\begin{itemize}
+ \item T-test: a parametric test used to test if the mean value of a distribution is significantly different from the one of another group;
+ \item Welch test: as a variation of the independent sample t-test, this one does not assume equal variance between the two groups, and is therefore more robust when variance or sample size is different in the two groups;
+ \item Wilcoxon Signed-Rank Test: is a non parametric test to compare two related samples or a single repeated measure on the same sample when the data is not normally distributed and is based on the mean rank difference;
+ \item Variance test (F-test): a parametric test to compare the variance in two groups or more. It relies on normality assumptions and the null hypotesis is equal variance in the two groups;
+ \item Kolmogorov-Smirnov Test: a non-parametric test used to either compare a sample distribution to a known distribution or to compare two samples to test if they come from the same unknown distribution;
+ \item T-test with permutation approach: is a test on means but the p-value is calculated through permutations, therefore it is not parametric;
+ \item F-test with permutation approach: is a test on variance and again, it is a non parametric test calculating the p-value through permutations of the data;
+ \item Overlapping index $\zeta$ with permutation approach.
+\end{itemize}
+
+\subsection{Simulation design}
+
+We simulated two groups, one coming from a $\mathcal{N}(0,1)$, and for the second group, using the skew-normal, we manipulated the following parameters:
+\begin{itemize}
+ \item $\xi: 0, .2, .5$;
+ \item $\omega: 1, 2, 3$;
+ \item $\alpha: 0, 2, 10$.
+\end{itemize}
+
+We also manipulated sample size: 10, 20, 50. For each of the $3 \times 3 \times 3 \times 3 = 81$ conditions we generated XXXX combinations on which we performed the tests described in the previous section.
+
+
+
+\section{Results}
+
+\section{Discussion}
+
+\newpage
+
+\section{Legenda}
+
+$\eta$ is the area of overlap
+
+$\zeta$ is the area of non overlap, therefore $1 - \eta$
+
+$\mu$ is the parameter of the mean of the normal standard 
+
+$\sigma$ is the standard deviation of the normal standard
+
+$\alpha$ determins the simmetry of the skew-normal
+
+$\xi$ is the mean value of the skew-normal
+
+$\omega$ determines the variance of the skew-normal
+
+
+
+\newpage
+\bibliographystyle{apacite}
+\bibliography{overlap}
+
+<<>>=
+opts_chunk$set(eval = FALSE)
+@
+
+
+\end{document}
+
+<<include=FALSE, eval = FALSE>>=
+library(overlapping)
+library(tidyverse)
+library(ggplot2)
+load(paste0(datadir,"Arsalidou-CMT-NMT-Data-forDataverse2024-02-14.RData"))
+
+x<-x[,c(1:4,80:151)]
+x<-x[-c(484:490),]
+
+LIST <- list(x$RT.B.HHM.C1.1[x$Age<18],x$RT.B.HHM.C1.1[x$Age>18])
+
+overlap(LIST,plot=T)
+
+@
+
+
+<<include=FALSE, eval=FALSE>>=
+DATA<-read.csv(paste0(datadir,"EngTurk.csv"))
+
+# parole alta e bassa freq Inglese
+table(DATA$item[DATA$ItemType == "High_freq" & DATA$Language == "English"])
+table(DATA$item[DATA$ItemType == "Low_freq" & DATA$Language == "English"])
+# blue eyes 
+# foreign business
+
+x1 <- DATA$ReactionTime[DATA$item == "blue eyes"]
+x2 <- DATA$ReactionTime[DATA$item == "foreign business"]
+LIST <- list(x1,x2)
+overlap(LIST, plot = TRUE)
+
+library(psych)
+skew(x1)
+skew(x2)
+kurtosi(x1)
+kurtosi(x2)
+mean(x1)
+mean(x2)
+sd(x1)
+sd(x2)
+# permutation test
+
+permTest(LIST)
+
+
+
+@
+
+
+\end{document}
+
+
+
+\end{document}

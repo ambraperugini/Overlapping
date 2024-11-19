@@ -6,4 +6,4 @@ cowplot
 sn
 Rcpp
 brms
-DataExplorer
+reshape2
