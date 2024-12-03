@@ -3,6 +3,7 @@ ggplot2
 testthat
 overlapping
 cowplot
+datawizard
 sn
 Rcpp
 brms
