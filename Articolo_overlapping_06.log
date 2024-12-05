@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2024.2.5)  3 DEC 2024 16:48
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2024.2.5)  5 DEC 2024 11:23
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1407,12 +1407,12 @@ Underfull \hbox (badness 1112) in paragraph at lines 246--247
  []
 
 [4 <./figure/ex2-1.pdf>]
-<figure/example-1.pdf, id=275, 216.81pt x 180.66998pt>
+<figure/example-1.pdf, id=279, 216.81pt x 180.66998pt>
 File: figure/example-1.pdf Graphic file (type pdf)
 <use figure/example-1.pdf>
 Package pdftex.def Info: figure/example-1.pdf  used on input line 290.
 (pdftex.def)             Requested size: 216.80946pt x 180.6778pt.
-<figure/scenari-1.pdf, id=278, 505.89pt x 216.81pt>
+<figure/scenari-1.pdf, id=282, 505.89pt x 216.81pt>
 File: figure/scenari-1.pdf Graphic file (type pdf)
 <use figure/scenari-1.pdf>
 Package pdftex.def Info: figure/scenari-1.pdf  used on input line 325.
@@ -1421,14 +1421,13 @@ Package pdftex.def Info: figure/scenari-1.pdf  used on input line 325.
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
 
-[5{/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc
-} <./figure/example-1.pdf>]
-<figure/alpha0-1.pdf, id=297, 505.89pt x 650.43pt>
+<figure/alpha0-1.pdf, id=285, 505.89pt x 650.43pt>
 File: figure/alpha0-1.pdf Graphic file (type pdf)
 <use figure/alpha0-1.pdf>
 Package pdftex.def Info: figure/alpha0-1.pdf  used on input line 385.
 (pdftex.def)             Requested size: 500.484pt x 643.491pt.
-
+[5{/usr/local/texlive/2023/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc
+} <./figure/example-1.pdf>]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 424.
@@ -1474,15 +1473,15 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 464.
 
-<figure/correlazioni-1.pdf, id=329, 289.08pt x 216.81pt>
+<figure/correlazioni-1.pdf, id=332, 289.08pt x 216.81pt>
 File: figure/correlazioni-1.pdf Graphic file (type pdf)
 <use figure/correlazioni-1.pdf>
 Package pdftex.def Info: figure/correlazioni-1.pdf  used on input line 490.
 (pdftex.def)             Requested size: 245.24199pt x 183.93207pt.
-<figure/global-1.pdf, id=332, 505.89pt x 216.81pt>
+<figure/global-1.pdf, id=335, 505.89pt x 216.81pt>
 File: figure/global-1.pdf Graphic file (type pdf)
 <use figure/global-1.pdf>
-Package pdftex.def Info: figure/global-1.pdf  used on input line 522.
+Package pdftex.def Info: figure/global-1.pdf  used on input line 521.
 (pdftex.def)             Requested size: 500.484pt x 214.497pt.
 
 LaTeX Warning: `!h' float specifier changed to `!ht'.
@@ -1513,10 +1512,10 @@ Package rerunfilecheck Info: File `Articolo_overlapping_06.out' has not changed
 (rerunfilecheck)             Checksum: A0E8F455715264ACE8F98C0233E8F1D9;3880.
  ) 
 Here is how much of TeX's memory you used:
- 25034 strings out of 476025
- 466329 string characters out of 5790018
+ 25038 strings out of 476025
+ 466423 string characters out of 5790018
  1875388 words of memory out of 5000000
- 44935 multiletter control sequences out of 15000+600000
+ 44938 multiletter control sequences out of 15000+600000
  526576 words of font info for 84 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  84i,11n,80p,2144b,571s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -1546,10 +1545,10 @@ f-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/texlive/2023/texmf
 -dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local/texlive/2023/t
 exmf-dist/fonts/type1/public/amsfonts/symbols/msbm7.pfb></usr/local/texlive/202
 3/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb>
-Output written on Articolo_overlapping_06.pdf (12 pages, 815389 bytes).
+Output written on Articolo_overlapping_06.pdf (12 pages, 817073 bytes).
 PDF statistics:
- 516 PDF objects out of 1000 (max. 8388607)
- 433 compressed objects within 5 object streams
- 92 named destinations out of 1000 (max. 500000)
+ 519 PDF objects out of 1000 (max. 8388607)
+ 436 compressed objects within 5 object streams
+ 93 named destinations out of 1000 (max. 500000)
  216 words of extra memory for PDF output out of 10000 (max. 10000000)
 

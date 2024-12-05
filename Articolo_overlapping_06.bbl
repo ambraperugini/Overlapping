@@ -518,6 +518,35 @@ Nougaret, S.%
 \PrintBackRefs{\CurrentBib}
 
 \bibitem [\protect \citeauthoryear {%
+Oksuz%
+\ \BBA {} Rebuschat%
+}{%
+Oksuz%
+\ \BBA {} Rebuschat%
+}{%
+{\protect \APACyear {2024}}%
+}]{%
+Oksuz_Rebuschat_2024}
+\APACinsertmetastar {%
+Oksuz_Rebuschat_2024}%
+\begin{APACrefauthors}%
+Oksuz, D\BPBI C.%
+\BCBT {}\ \BBA {} Rebuschat, P.%
+\end{APACrefauthors}%
+\unskip\
+\newblock
+\APACrefYearMonthDay{2024}{Mar}{}.
+\newblock
+\APACrefbtitle {Collocational processing in typologically different languages,
+  English and Turkish.} {Collocational processing in typologically different
+  languages, english and turkish.}
+\newblock
+\APACaddressPublisher{}{OSF}.
+\newblock
+\begin{APACrefURL} \url{osf.io/muwjz} \end{APACrefURL}
+\PrintBackRefs{\CurrentBib}
+
+\bibitem [\protect \citeauthoryear {%
 Pastore%
 }{%
 Pastore%
