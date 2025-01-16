@@ -3,7 +3,7 @@
 \pagestyle{myheadings}
 \usepackage{color}
 \usepackage[italian,english]{babel}
-\usepackage[colorlinks,bookmarksopen,bookmarksnumbered,citecolor=red,urlcolor=red]{hyperref}
+% \usepackage[colorlinks,bookmarksopen,bookmarksnumbered,citecolor=red,urlcolor=red]{hyperref}
 \usepackage[margin=3cm]{geometry}
 \usepackage{bm}
 \usepackage{tikz}
@@ -51,8 +51,7 @@ datadir <- paste0(main,"data/")
 \author{Ambra Perugini$^{1}$*, Giulia Calignano$^{1}$, Massimo Nucci$^{2}$, Livio Finos$^{3}$, Massimiliano Pastore$^{1}$\\
 \small $^1$ Department of Developmental and Social Psychology, University of Padua, Italy\\
 \small $^2$ Department of General Psychology, University of Padua, Italy\\
-\small $^3$ Department of Statistical Sciences, University of Padua, Italy \\ \\
-\large This manuscript has been posted as a pre-print has not yet undergone peer-review}
+\small $^3$ Department of Statistical Sciences, University of Padua, Italy }
 
 \maketitle
 
