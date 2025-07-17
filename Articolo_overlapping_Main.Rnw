@@ -32,7 +32,7 @@ opts_chunk$set(fig.width=3, fig.height=3, dev="tikz",fig.align='center',echo=FAL
 
 <<>>=
 rm(list=ls())
-main <- "/Users/ambraperugini/Library/CloudStorage/OneDrive-UniversitàdegliStudidiPadova/Lavoro/Overlapping/"
+main <- "/Users/ambraperugini/Documents/Work/projects/Overlapping/"
 
 # main <- "~/lavori/overpermutation/"
 # if (!grepl("bayes",Sys.info()["user"])) main <- gsub("~","~/MEGAsync",main)
