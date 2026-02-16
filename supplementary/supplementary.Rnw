@@ -1,0 +1,1118 @@
+% \documentclass[twocolumn]{article}
+\documentclass[10pt]{article}
+\pagestyle{myheadings}
+\usepackage{color}
+\usepackage[italian,english]{babel}
+\usepackage[margin=3cm]{geometry}
+\usepackage{bm}
+\usepackage{tikz}
+\usepackage[utf8x]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{caption}
+\usepackage[colorlinks]{hyperref}
+\hypersetup{
+  colorlinks=true,
+  citecolor=[RGB]{0,0,0},
+  linkcolor=[RGB]{0,89,178}, %[RGB]{217,0,0}, %Red,
+  urlcolor=[RGB]{0,89,178}}
+\captionsetup{font=footnotesize}
+\usepackage{apacite}
+\usepackage{chngcntr}
+
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thefigure}{S\arabic{figure}}
+
+<<include=FALSE>>=
+library(knitr)
+options(digits=3)
+opts_chunk$set(fig.width=3, fig.height=3, dev="tikz",fig.align='center',echo=FALSE,results="hide",comment=NA,prompt=FALSE,warning=FALSE, cache = TRUE)
+@
+\usepackage{float}
+\floatstyle{boxed}
+\newfloat{program}{btp}{lop}
+\floatname{program}{Box}
+\usepackage{mdframed}
+\definecolor{boxcol}{RGB}{213,226,238}
+\newmdenv[linecolor=boxcol,backgroundcolor=boxcol]{comments}
+
+
+<<>>=
+rm(list=ls())
+main <- "/Users/ambraperugini/Documents/Work/projects/Overlapping/supplementary/"
+
+# main <- "~/lavori/overpermutation/"
+if (grepl("kolmogorov",Sys.info()["user"])) main <- gsub("~","~/MEGAsync",main)
+if (grepl("cox",Sys.info()["user"])) main <- gsub("~","~/MEGA",main)
+datadir <- paste0(main,"data/")
+# KUtils::pulizia(paste(main,"knitr/",sep=""), c(".Rnw",".bib",".pdf",".Rmd",".Qmd",".html",".csl") ) #,TRUE)
+@
+
+
+\begin{document}
+
+\title{\textbf{\textit{How do my distributions differ?} \\ Significance testing for the Overlapping Index \\ using Permutation Test \\ Supplementary material}} 
+
+
+% \subtitle{This manuscript has been postet as a pre-print has not yet undergone peer-review}
+
+\author{Giulia Calignano$^{1}$, Ambra Perugini$^{1}$*, Massimo Nucci$^{2}$, Livio Finos$^{3}$, Massimiliano Pastore$^{1}$\\
+\small $^1$ Department of Developmental and Social Psychology, University of Padua, Italy\\
+\small $^2$ Department of General Psychology, University of Padua, Italy\\
+\small $^3$ Department of Statistical Sciences, University of Padua, Italy }
+
+\maketitle
+
+
+<<>>=
+# ++++++++++++++++++++++++++++++++++
+betapar <- function(mx,sx,n=NULL) {
+  vx <- sx^2
+  if (vx<(mx*(1-mx))) {
+    pezzo <- ((mx*(1-mx))/vx)-1
+    a <- mx*pezzo
+    b <- (1-mx)*pezzo
+  } else {
+    warning("adjusted formula by using n")
+    a <- mx*n
+    b <- (1-mx)*n
+  }
+  return(list(a=a,b=b))
+}
+
+# +++++++++++++++++++++++++++
+snpar <- function(xi=0,omega=1,alpha=0) {
+  delta <- alpha/sqrt(1+alpha^2)
+  mu <- xi + omega * delta * sqrt( 2/pi )
+  sigma2 <- omega^2 * ( 1 - (2*delta^2)/pi )
+  return(list(mu = mu, sigma = sqrt(sigma2)))
+}
+
+# +++++++++++++++++++++++++++
+sninvpar <- function( mu=0, sigma=1, xi=NULL, omega=NULL, alpha=0 ) {
+  
+  if (is.null(omega)) {
+    delta <- alpha/sqrt(1+alpha^2)
+    omega2 <- sigma^2 / ( 1 - (2*delta^2) / pi )
+    omega <- sqrt( omega2 )
+  }
+  
+  if (is.null(xi)) {
+    delta <- alpha/sqrt(1+alpha^2)
+    xi <- mu - omega * delta * sqrt( 2/pi )
+  }
+  
+  return( list( xi = xi, omega = omega, alpha = alpha ) )
+  
+}
+
+# +++++++++ funzione colori default
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+# +++++++++++++++++++++++++++++++
+#' @name min_normal_uniform
+#' @description Calcola il minimo tra la densità di una normale e di una uniforme
+#' @param x = x vector
+#' @param normPars = parametri della normale: media e dev. standard
+#' @param unifPars = parametri della uniforme: minimo e massimo
+#' #' @param return.all = logical, if \code{TRUE} restituisce il data set completo delle densità delle due distribuzioni
+min_normal_uniform <- function( x = NULL, normPars = c(0,1), unifPars = c(0,1), return.all = FALSE ) {
+  
+  if (is.null(x)) x <- seq(-5,5,by=.1)
+  
+  y1 <- dnorm(x, normPars[1], normPars[2])
+  y2 <- dunif(x, unifPars[1], unifPars[2])
+  dy <- ifelse(y1<y2, y1, y2)
+  
+  gData <- data.frame( x, y1, y2, dy )  
+  
+  if (return.all) {
+    return( list( gData = gData ) )
+  } else {
+    return( dy )  
+  }
+
+}
+
+
+
+# +++++++++++++++++++++++++++++++++++
+#' @name min_dskew_normal
+#' @description Calcola il minimo tra due densità Skew-Normal
+#' @param x = x vector
+#' @param xi = vector of location parameters
+#' @param omega = vector of scale parameters
+#' @param alpha = vector of skewness parameters
+#' @param plot = logical, if \code{TRUE} produce la rappresentazione grafica delle densità 
+#' e dell'area di sovrapposizione
+#' @param return.all = logical, if \code{TRUE} restituisce il data set completo delle 
+#' densità delle due distribuzioni
+min_dskew_normal <- function( x = seq( -5, 5, by = .01 ), xi = c(0,0), omega = c(1,1), alpha = c(0,0), 
+                              return.all = FALSE ) {
+  
+  if (length(xi)==1) xi <- rep(xi,2)
+  if (length(omega)==1) omega <- rep(omega,2)
+  if (length(alpha)==1) alpha <- rep(alpha,2)
+  
+  require( sn )
+  y1 <- dsn( x, xi = xi[1], omega = omega[1], alpha = alpha[1] )
+  y2 <- dsn( x, alpha = alpha[2], xi = xi[2], omega = omega[2] )
+  dy <- ifelse( y1 < y2, y1, y2 )
+  gData <- data.frame( x, y1, y2, dy )  
+  
+  if (return.all) {
+    return( list( gData = gData ) )
+  } else {
+    return( dy )  
+  }
+}
+
+# ++++++++++++++++++++++++++++
+#' @name permTest
+#' @description Esegue test di permutazione su overlapping, 
+#'differenza tra medie e rapporto tra varianze
+#' @param xList = lista di due elementi (\code{x1} e \code{x2} ) 
+#' @param B = numero di permutazioni da effettuare
+#' @param ov.type = character, type of index. If type = "2" returns the proportion of the overlapped area between two or more densities. 
+#' @note Il confronto tra le medie è ad una sola coda e 
+#'testa l'ipotesi che le medie siano uguali vs l'ipotesi
+#'che la seconda sia maggiore della prima (\code{mean(x2) > mean(x1)})
+#' @return Restituisce una lista con tre elementi:
+#' obs = vettore dei valori osservati di non-sovrapposizione 
+#'       \coed{1-eta}, differenza tra le medie (\code{mean(x2)-mean(x1)}), 
+#'       rapporto tra le varianze
+#' perm = matrice Bx3 con i valori delle stesse statistiche ottenute
+#'        via permutazione
+#' pval = vettore con i tre p-values   
+permTest <- function( xList, B = 1000, ov.type = c("1","2")) {
+  
+  require(overlapping)
+  ov.type <- match.arg(ov.type)
+  names(xList) <- c("x1","x2")
+  N <- unlist( lapply(xList,length) )
+  
+  # observed statistics
+  zobs <- 1-overlap( xList, type = ov.type )$OV
+  dobs <- diff( unlist( lapply(xList, mean) ) )
+  Fobs <-  with( xList, var.test(x1,x2)$statistic )
+  OBS <- data.frame(zobs,dobs,Fobs)
+  Mobs <- matrix( OBS, nrow=B, ncol=3, byrow = TRUE )
+  
+  Yperm <- t( sapply(1:B, function(b){
+    xperm <- sample( unlist( xList ) )
+    xListperm <- list( x1 = xperm[1:N[1]], x2 = xperm[(N[1]+1):(sum(N))] )
+    
+    zperm <- 1 - overlap( xListperm, type = ov.type )$OV
+    dperm <- diff( unlist( lapply(xListperm, mean) ) )
+    Fperm <-  with( xListperm, var.test(x1,x2)$statistic )
+    
+    out <- c(zperm,dperm,Fperm)
+    names(out) <- c("zperm","dperm","Fperm")
+    out
+  }) )
+  
+  PVAL <- (apply( Yperm >= Mobs, 2, sum )+1)/(nrow(Yperm)+1)
+  L <- list(obs=OBS,perm=Yperm,pval=PVAL)
+  
+  return(L)
+}
+
+# ++++++++++++++++++++++++++
+#' @name numeriAPA
+#' @description Toglie lo zero dagli indici inclusi nell'intervallo [0,1], secondo norme APA
+numeriAPA <- function(x) {
+  if (x > .001) {
+    y <- gsub("0\\.","\\.",as.character(x))
+  } else {
+    y <- "< .001"
+  }
+  return(y)
+}
+
+## +++++++++++++++++++++++++++++++++++++++++++
+#' @title Grafico correlazioni
+#' @param RR = correlation matrix
+#' @param U = vettore con i margini del grafico
+plot_correlation <- function(RR,values=FALSE,textsize=12,legendsize=10,angle=0, corrsize=4, U=c(0,0,0,0), short.names = FALSE) {
+  require(ggplot2)
+  require(reshape2)
+  RR <- melt(RR)
+  NAME <- "Correlation"
+  
+  if (short.names) {
+    levels(RR$Var2) <- paste0("(",1:length(levels(RR$Var2)),")")
+  }
+  
+  GGcor <- ggplot(RR,aes(Var2,Var1,fill=value))+geom_tile()+
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white",midpoint =0, space = "Lab",name=NAME)+
+    xlab("")+ylab("")+coord_fixed()+
+    theme(plot.margin = unit(U, "cm"),
+          text=element_text(size=textsize),
+          axis.text.x=element_text(angle=angle),
+          legend.text = element_text(size = legendsize),legend.title = element_text(size = legendsize)) 
+  
+  if (values) {
+    GGcor <- GGcor + geom_text(aes(Var2, Var1, label = round(value,2)), color = "black", size = corrsize )
+  }
+  print(GGcor)
+}
+
+# ++++++++++++++++++++++++++++
+#' @name perm.test
+#' @description Esegue test di permutazione su overlapping, 
+#'differenza tra medie e rapporto tra varianze
+#' @param x = lista di due elementi (\code{x1} e \code{x2} ) 
+#' @param B = numero di permutazioni da effettuare
+#' @return Restituisce una lista con tre elementi:
+#' obs = valore osservato di non-sovrapposizione 
+#'       \coed{1-eta}
+#' perm = valori della stessa statistica ottenute
+#'        via permutazione
+#' pval = p-value   
+perm.test <- function (x, B = 1000, 
+               return.distribution = FALSE, ...)
+{
+  
+  # control 
+  args <- c(as.list(environment()), list(...))
+  pairsOverlap <- ifelse(length(x)==2, FALSE, TRUE)
+  
+  N <- unlist( lapply(x,length) )
+  out <- overlap(x, ...)
+  
+  if (pairsOverlap) {
+    zobs <- 1-out$OVPairs
+    Zperm <- t(sapply(1:B, function(b) {
+      xListperm <- perm.pairs( x )
+      ovperm <- unlist( lapply(xListperm, overlap, ...) )
+      zperm <- 1 - ovperm
+    }))
+  } else {
+    zobs <- 1-out$OV
+    Zperm <- t(sapply(1:B, function(b) {
+      xperm <- sample( unlist( x ) )
+      xListperm <- list( x1 = xperm[1:N[1]], x2 = xperm[(N[1]+1):(sum(N))] )      
+      zperm <- 1 - overlap( xListperm, ... )$OV
+    }))
+  }
+  
+  
+  ## (sum( zperm >= obsz ) +1) / (length( zperm )+1) LIVIO
+  
+  colnames(Zperm) <- gsub("\\.OV","",colnames(Zperm))
+  if (nrow(Zperm) > 1) {
+    
+    ZOBS <- matrix( zobs, nrow(Zperm), ncol(Zperm), byrow = TRUE )
+    pval <- (apply( Zperm > ZOBS, 2, sum ) + 1)/ (nrow(Zperm)+1)
+    
+  } else {
+    pval <- (sum(Zperm > zobs)+1) / (length(Zperm)+1)
+  }
+  
+  if (return.distribution) {
+    return(list(Zobs = zobs, pval = pval, Zperm = Zperm))
+  } else {
+    return(list(Zobs = zobs, pval = pval))  
+  }
+  
+  
+}
+
+# ++++++++++++++++++++++++
+#' @name add_and
+#' @title Aggiunta di and 
+#' @description Aggiunge "and" alla fine di un elenco.
+#' @param x = vettore
+#' @param eng = logico, se \code{TRUE} scrive \code{and}, altrimenti scrive \code{e}.
+add_and <- function(x, eng = TRUE) {
+  
+  if (eng) {
+    out <- paste0( paste0(x[1:(length(x)-1)],collapse = ", "),", and ", x[length(x)] )
+  } else {
+    out <- paste0( paste0(x[1:(length(x)-1)],collapse = ", "),", e ", x[length(x)] )
+  }
+  
+  return(out)
+}
+
+
+@
+
+\begin{abstract}
+The present study introduces the application of the permutation test to the Overlapping Index, an effect size measure for comparing density distributions of groups or conditions, to estimate effects of interest in psychological science. Starting with common scenarios in psychological science research, the paper highlights the importance of relying on statistical methods that are resilient to the complexities inherent in psychological data, where assumption violations are often inevitable. A Simulation study is presented to illustrate the practical implications and reliability of the proposed test compared to commonly used alternatives. The findings demonstrate the good control of Type I error of the $\zeta$-Overlapping test and how this approach outperforms in terms of power all other tests considered in the simulation, already with small samples. The paper offers practical guidance and demonstrates the advantages of this method, emphasizing its potential to enhance transparency and rigor in psychological data analysis by shifting focus from traditional significance testing to comprehensive distributional evaluations.
+\end{abstract}
+
+
+\newpage
+\section{Simulation study}
+
+To evaluate the performance of the permutation test applied to the Overlapping Index, we performed a simulation study. The aim is to generate data for a set of scenarios distinguishing mean, variance and shape of the populations and compare the $\zeta$-Overlapping permutation test to other commonly used tests in terms of type I error control and power. 
+
+
+\subsection{Data generation}
+
+In the simulation, two density distributions will be compared for many different scenarios. The first distribution will always be a normal standard distribution with $\mu = 0$ and $\sigma = 1$. 
+To simulate data for the second distribution we use the Skew-Normal distribution \cite{azzalini:1985}, which is defined in the following way: given $\xi \in \mathbb{R}$, $\omega \in \mathbb{R}^{+}$ and $\alpha \in \mathbb{R}$, then for $y \in \mathbb{R}$ we have  
+\begin{equation}
+\mathcal{SN}(y|\xi, \omega, \alpha) = \frac{1}{\omega \sqrt{2\pi}} \exp \left[ -\frac{1}{2} \left( \frac{y-\xi}{\omega} \right)^2  \right] \left[ 1+ \text{erf}\left( \alpha \left( \frac{y-\xi}{\omega\sqrt{2}}\right) \right) \right]
+\end{equation}
+in which $$\text{erf}(z) = \frac{2}{\sqrt{\pi}} \int_{0}^{z} e^{-t^2} dt $$ is the \emph{error function}.
+When $\xi = 0$, $\omega = 1$ and $\alpha = 0$ the distribution is a standard normal distribution.
+
+$\xi$ is the location parameter, $\omega$ is the scale parameter and $\alpha$ is related to the skewness of the distribution. Therefore, this distribution is suitable to generate data modelling both the distance between means (the effect size), symmetry and variance.
+
+
+\begin{figure*}[!h]
+<<scenari,fig.width=7,message=FALSE>>=
+library(sn)
+
+PARlist <- list(
+  xi_vec = c(0,.5,1),
+  omega_vec = c(1,2,3),
+  alpha_vec = c(0,1,2)
+)
+
+x <- seq(-5,5,by=.1)
+
+gData <- NULL
+for (j in 1:3) {
+  
+  # xi
+  y <- with( PARlist, dsn(x,xi_vec[j],omega_vec[1],alpha_vec[1]) )
+  xi <- PARlist$xi_vec[j]
+  omega <- PARlist$omega_vec[1]
+  alpha <- PARlist$alpha_vec[1]
+  scenario <- "xi"
+  dd <- data.frame(x,y,xi,omega,alpha,scenario)  
+  gData <- rbind(gData,dd)  
+  
+  # omega
+  y <- with( PARlist, dsn(x,xi_vec[1],omega_vec[j],alpha_vec[1]) )
+  xi <- PARlist$xi_vec[1]
+  omega <- PARlist$omega_vec[j]
+  alpha <- PARlist$alpha_vec[1]
+  scenario <- "omega"
+  dd <- data.frame(x,y,xi,omega,alpha,scenario)  
+  gData <- rbind(gData,dd)  
+   
+  # alpha
+  y <- with( PARlist, dsn(x,xi_vec[1],omega_vec[1],alpha_vec[j]) )
+  xi <- PARlist$xi_vec[1]
+  omega <- PARlist$omega_vec[1]
+  alpha <- PARlist$alpha_vec[j]
+  scenario <- "alpha"
+  dd <- data.frame(x,y,xi,omega,alpha,scenario)  
+  gData <- rbind(gData,dd)  
+  
+}
+
+gData$xi <- factor(gData$xi)
+gData$omega <- factor(gData$omega)
+gData$alpha <- factor(gData$alpha)
+
+UNIT <- .5
+
+library(ggplot2)
+theme_set(theme_bw())
+cowplot::plot_grid(
+  ggplot(subset(gData,scenario=="xi"),aes(x,y,color=xi))+geom_line()+xlab("")+ylab("")+ggtitle("[A]")+labs(color="$\\xi$") + theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm")),
+  
+  ggplot(subset(gData,scenario=="omega"),aes(x,y,color=omega))+geom_line()+xlab("")+ylab("")+ggtitle("[B]")+theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm"))+labs(color="$\\omega$"),
+  
+  ggplot(subset(gData,scenario=="alpha"),aes(x,y,color=alpha))+geom_line()+xlab("")+ylab("")+ggtitle("[C]")+theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm"))+labs(color="$\\alpha$"), nrow = 1
+)
+
+@
+\caption{Examples of Skew-Normal distributions ($\xi$,$\omega$,$\alpha$); [A] three densities with same variance and shape but different location parameter values ($\xi = \Sexpr{PARlist$xi_vec}$), [B] three densities with same mean and shape but different scale parameter values ($\omega = \Sexpr{PARlist$omega_vec}$) and [C] three densities with same mean and variance but different shape parameter values ($\alpha = \Sexpr{PARlist$alpha_vec}$). \label{fig:scenari}}
+\end{figure*}
+
+Mean and variance of the Skew-Normal are respectively: 
+\begin{eqnarray}\label{eq:musigmaSN}
+\begin{array}{l}
+\mu = \xi + \omega \gamma \sqrt{2/\pi} \\
+\sigma^2 = \omega^2 [1- (2\gamma^2)/\pi]
+\end{array}
+\end{eqnarray}
+in which $\gamma = \alpha / \sqrt{1 + \alpha^2}$. Based on the equations (\ref{eq:musigmaSN}) we can determine the values to assign to the parameters $\xi$ e $\omega$ in function of $\mu$ and $\sigma$ with the equations:
+
+\begin{eqnarray}\label{eq:xiomegaSN}
+\begin{array}{l}
+ \xi = \mu - \omega \gamma \sqrt{2/\pi} \\
+ \omega = \sqrt{\sigma^2/ [1- (2\gamma^2)/\pi]}
+\end{array}
+\end{eqnarray}
+
+The Skew-Normal distribution is optimal for our purpose as it allows to have control over parameters of mean, variance, skewness and kurtosis, as shown in figure \ref{fig:scenari}.
+
+<<cache=FALSE>>=
+load(paste0(datadir,"R02_sim07.rda"))
+NTAB <- table(ALL$n,ALL$mu,ALL$sigma,ALL$alpha)
+@
+
+
+\subsection{Simulation design}
+
+
+
+In the simulation we confront two samples extracted from a Skew-Normal, the first one is generated from $\mathcal{SN}(0,1,0)$, which is the Standard-Normal distribution, and the second one from $\mathcal{SN}(\xi,\omega,\alpha)$. Consequently, the first sample derives always from a population with mean 0 and variance 1. To define the various scenarios, we manipulate the parameters of the second population in orther to obtain specific differences in means ($\delta$), standard deviations ($\sigma$) and skewness ($\alpha$). Four factors were sistematically varied ina complete four-factors design as follows:
+
+\begin{itemize}
+
+   \item $\delta = (\Sexpr{PARlist$mu_vec})$; mean of the second population, which corresponds also to the difference between the two groups, the first one has always $\mu = 0$;
+  \item $\sigma = (\Sexpr{PARlist$sigma_vec})$; standard deviation of the second population;
+  \item $\alpha = (\Sexpr{PARlist$alpha_vec})$; degree of asymmetry (skewness) of the second population; 
+  \item $n = (\Sexpr{PARlist$n_vec})$; sample size, equal in the two samples.
+ 
+\end{itemize}
+
+
+For each of the $\Sexpr{length(PARlist$mu_vec)} \times \Sexpr{length(PARlist$sigma_vec)} \times \Sexpr{length(PARlist$alpha_vec)} \times \Sexpr{length(PARlist$n_vec)} = \Sexpr{length(PARlist$n_vec)*length(PARlist$mu_vec)*length(PARlist$sigma_vec)*length(PARlist$alpha_vec)}$ conditions we generated \Sexpr{NTAB[1,1,1,1]} sets of data on which we performed the analysis. 
+
+
+<<message=FALSE>>=
+
+library( scales )
+INDICI <- colnames(ALL)[grep("pval",colnames(ALL))]
+INDICI <- INDICI[!(grepl("_norm",INDICI)|grepl("F_",INDICI)|grepl("mean_",INDICI))]
+INDICI <- INDICI [c(1:3, 6, 4, 5)]
+
+LEGENDA <- data.frame( var = colnames(ALL), desc = c("media camp. 1", "sd camp. 1","media camp. 2", "sd camp. 2", "overlapping tipo 1", "overlapping tipo 2", "sample size","differenza tra le xi","skewness","varianza","vera sovrapposizione","t test","welch test","wilcoxon test", "var test", "overlapping perm","mean perm", "var perm", "shapiro camp. 1", "shapiro camp. 2","kolmogorov","media secondo campione","ds secondo campione") )
+
+MUSI <- with( PARlist, expand.grid(mu=mu_vec, sigma=sigma_vec, alpha = alpha_vec) )
+
+DESIGN <- NULL 
+for (i in 1:nrow(MUSI)) {
+  DESIGN <- rbind( DESIGN, unlist( with( MUSI, sninvpar(mu[i],sigma[i],alpha = alpha[i]) )) )
+}
+
+DESIGN <- data.frame(DESIGN)
+DD <- with( DESIGN, expand.grid( xi = unique(xi), omega = unique(omega), 
+              alpha = unique(alpha), n = PARlist$n_vec ) )
+DESIGN <- apply(DD, 1, as.list)
+
+DD <- do.call(rbind,lapply(DESIGN, function(x){
+  unlist(x)
+}))
+DD <- data.frame( unique( DD[,c("xi","omega","alpha")] ) )
+DD$mu <- factor(with(DD, snpar(xi,omega,alpha)$mu))
+DD$sigma <- factor(with(DD, snpar(xi,omega,alpha)$sigma))
+
+DD <- subset( DD, (mu %in% PARlist$mu_vec)  & (alpha %in% PARlist$alpha_vec ) & (sigma %in% PARlist$sigma_vec))
+
+LEGENDA$var <- gsub("_","\\\\_",LEGENDA$var)
+LEGENDA$eng <- c(
+  "sample 1 mean",
+  "sample 1 standard deviation",
+  "sample 2 mean",
+  "sample 2 standard deviation",
+  "type I overlapping index",
+  "type II overlapping index",
+  "sample size",
+  "true mean difference (i.e. mean of second population)",
+  "true skewness of second population",
+  "true scale parameter of second population",
+  "true overlapping between the two populations",
+  "$t$-test $p$-value",
+  "Welch-test $p$-value",
+  "Wilcoxon-Mann-Whitney-test $p$-value",
+  "$F$-test $p$-value",
+  "$\\zeta_{\\mbox{ov}}$-test $p$-value",
+  "$t$-test via permutation $p$-value",
+  "$F$-test via permutation $p$-value",
+  "Shapiro-test in sample 1 $p$-value",
+  "Shapiro-test in sample 2 $p$-value",
+  "Kolmogorov-Smirnov-test $p$-value",
+  "true mean of second population",
+  "true standard deviation of second population"
+)
+
+
+@
+
+
+
+<<message=FALSE>>=
+library(brms)
+
+x <- seq(-5,5, by=.01)
+gData <- data.frame(x=x)
+gData$z <- dskew_normal(x,xi=0,omega=1)
+
+for (i in 1:nrow(DD)) {
+  k <- with(DD, paste0("mu_",mu[i],"_sigma_",sigma[i],"_alpha_",alpha[i]))
+  y <- dsn( gData$x, xi = DD$xi[i], omega = DD$omega[i], alpha = DD$alpha[i] )
+  
+  gData <- cbind(gData,y)
+  colnames(gData)[ncol(gData)] <- k
+  
+}
+
+Y <- stack( gData[,grep("mu",colnames(gData))] )
+Y$x <- gData$x
+Y$z <- gData$z
+
+ll <- strsplit(as.character(Y$ind),split="_")
+
+Y$mu <- factor( unlist( lapply(ll, function(x){x[2]}) ))
+Y$sigma <- factor( unlist( lapply(ll, function(x){x[4]}) ))
+Y$alpha <- factor( unlist( lapply(ll, function(x){x[6]}) ), levels = c(0,2,10))
+
+TEXT <- unique(Y[,c("mu","sigma","alpha")])
+TEXT$label <- paste0("[",1:36,"]")
+TEXT$x <- -4.5
+TEXT$y <- .4
+
+@
+
+\begin{figure*}
+%,fig.width=7,fig.cap=" ",fig.height=9
+<<alpha0,fig.width=7,fig.height=9>>=
+
+theme_set(theme_bw())
+ggplot(Y,aes(x,z)) + facet_grid(alpha+sigma~mu) + geom_line() + geom_line(aes(x,values,color="red")) + geom_text( aes(x,y,label=label), data = TEXT) + guides(color="none") + xlab("") + ylab("") + scale_y_continuous(breaks = NULL)
+
+@
+\caption{Generative data distributions in function of $\delta$ (column panels),  $\sigma$ and $\alpha$ (row panels). The black curves are the first population, $\mathcal{SN}(0,1,0)$, the red ones represent second population, $\mathcal{SN}(\xi,\omega,\alpha)$.\label{fig:alpha0}}
+\end{figure*}
+
+In figure \ref{fig:alpha0} are graphically represented the 36 scenarios of data generation, the black curves are the first population, always a $\mathcal{SN}(0,1,0)$, and the red curves are relative to the second population $\mathcal{SN}(\xi,\omega,\alpha)$.
+
+For each combination $\delta \times \sigma \times \alpha \times n $, on the generated data were performed the following tests: 
+\begin{itemize}
+ \item $t$ test for independent samples, assuming equal variance;
+ \item Welch test for independent samples;
+ \item Wilcoxon test for independent samples;
+ \item Permutation test on the complement of the Overlapping Index, $\zeta = 1-\eta$, which therefore becomes an index of difference between groups;
+ \item $F$ test of homogeneity of variances;
+ \item Kolmogorov-Smirnov test for comparing two distributions.
+\end{itemize}
+
+The whole procedure generated a total of \Sexpr{length(unique(ALL$mu))} (mean differences) $\times$ \Sexpr{length(unique(ALL$sigma))} (standard deviation differences) $\times$ \Sexpr{length(unique(ALL$alpha))} (shape differences) $\times$ \Sexpr{length(unique(ALL$n))} (sample sizes) $\times$ \Sexpr{ nrow(ALL)/(length(unique(ALL$mu))*length(unique(ALL$sigma))*length(unique(ALL$alpha))*length(unique(ALL$n)))} (replications) = \Sexpr{scales::comma(nrow(ALL))} datasets as well as \Sexpr{scales::comma(nrow(ALL)*6)} of statistical tests and corresponding $p$-values.
+
+
+\clearpage
+\subsection{Results}
+
+The final data set had \Sexpr{scales::comma(nrow(ALL))} $\times$ \Sexpr{ncol(ALL)} variables. We included the following informations:
+
+<<results='asis'>>=
+
+library(xtable)
+print( xtable( LEGENDA[,c(1,3)]), include.colnames = FALSE, sanitize.text.function = function(x){x})
+
+
+@
+
+In the paper, we considered only the following variables: \Sexpr{add_and(LEGENDA$var[c(8,23,9,7)])} (representing the experimental conditions) and \Sexpr{add_and(LEGENDA$var[c(12:14,16,15,21)])} (representing the statistical tests under consideration).
+
+\subsubsection{Simulation check}
+
+Table \ref{tab:tabcheck} reports the means of means and standard deviations of the \Sexpr{scales::comma(nrow(ALL))} simulated samples. The first sample was extracted from a $Normal(0,1)$, consequently the mean (mx1) and standard deviation (sx1) are always close to 0 and 1, respectively. The parameters $\mu$ and $\sigma$ represent the mean and standard deviation of the second population from which the second sample was extracted. The mean of means (mx2) and standard deviation (sx2) are close to the expected values $\mu$ and $\sigma$.
+<<results='asis'>>=
+TABcheck <- aggregate( mx1 ~ mu, data = ALL, mean )
+TABcheck$mx2 <- aggregate( mx2 ~ mu, data = ALL, mean )$mx2
+SX <- aggregate( sx1 ~ sigma, data = ALL, mean )
+TABcheck$sigma <- c(SX$sigma,NA)
+TABcheck$sx1 <- c(SX$sx1,NA)
+TABcheck$sx2 <- c(aggregate( sx2 ~ sigma, data = ALL, mean )$sx2,NA)
+colnames(TABcheck)[c(1,4)] <- c("$\\mu$","$\\sigma$")
+
+print( xtable( TABcheck, label = "tab:tabcheck",  caption = paste0("Means of means and standard deviations of the ",nrow(ALL)," simulated samples. $\\mu$ and $\\sigma$ are the true mean and standard deviation of the second population (the first population has $\\mu =0$ and $\\sigma = 1$), mx1 and mx2 are the means of means in the first and second sample, respectively, sx1 and sx2 are the means of standard deviations."), align = "lcrr|crr" ), include.rownames=FALSE, hline.after = c(-1,0), sanitize.text.function = function(x){x} )
+
+@
+
+\subsubsection{Type I error and power}
+
+
+Figure \ref{fig:figpaper} replicates the figure presented in the paper. To obtain this figure, we used the following algorithm:
+
+\begin{enumerate}
+ \item For each test, we created a dummy variable indicating with \texttt{TRUE} a statistically significant result ($p\leq .05$) and with \texttt{FALSE} a non-significant result ($p > .05$).
+ 
+<<>>=
+
+ALL$zeta_perm_sig <- ifelse(ALL$zeta_perm_pval<=.05,TRUE,FALSE)
+ALL$t_sig <- ifelse(ALL$t_pval <= .05, TRUE, FALSE)
+ALL$welch_sig <- ifelse(ALL$welch_pval <= .05, TRUE, FALSE)
+ALL$wilcox_sig <- ifelse(ALL$wilcox_pval <= .05, TRUE, FALSE)
+ALL$vartest_sig <- ifelse(ALL$vartest_pval <= .05, TRUE, FALSE)
+ALL$ks_test_sig <- ifelse(ALL$ks_test_pval <= .05, TRUE, FALSE)
+
+@
+ \item We created a dummy variable indicating the experimental conditions for which the Null hypothesis is \texttt{TRUE} (i.e., conditions where there is no real difference between the populations being compared: $\mu_1 = \mu_2 = \delta = 0$, $\sigma_1 = \sigma_2 = \sigma = 1$, $\alpha_1 = \alpha_2 = \alpha = 0$). Note that this condition is illustrated in panel [1] of Figure \ref{fig:scenari}.
+ 
+<<>>=
+ALL$H0_TRUE <- with(ALL, ifelse(mu==0 & sigma == 1 & alpha == 0, TRUE, FALSE))
+@
+ \item We aggregated results by calculating the proportion of significant results for each condition to obtain type I error and power curves for each test.
+
+<<>>=
+PW <- aggregate( zeta_perm_sig ~ n+H0_TRUE, data = ALL, FUN = mean)
+PW$t_sig <- aggregate( t_sig ~ n+H0_TRUE, data = ALL, FUN = mean)$t_sig
+PW$welch_sig <- aggregate( welch_sig ~ n+H0_TRUE, data = ALL, FUN = mean)$welch_sig
+PW$wilcox_sig <- aggregate( wilcox_sig ~ n+H0_TRUE, data = ALL, FUN = mean)$wilcox_sig
+PW$vartest_sig <- aggregate( vartest_sig ~ n+H0_TRUE, data = ALL, FUN = mean)$vartest_sig
+PW$ks_sig <- aggregate( ks_test_sig ~ n+H0_TRUE, data = ALL, FUN = mean)$ks_test_sig
+
+Y <- stack(PW[,grep("_sig",colnames(PW))])
+Y$H0 <- PW$H0_TRUE
+Y$n <- PW$n
+
+@
+
+\end{enumerate}
+
+In Figure \ref{fig:figpaper}, panel [A] shows the type I error curves as a function of sample size ($n$), while panel [B] shows the power curves as a function of sample size ($n$). 
+
+<<figpaper,fig.width=7,fig.cap="Control of type I error [A] and power [B] in the various tests. Note: $\\zeta_{\\mbox{ov}}$ = $\\zeta$-Overlapping test, $F$ = variance test, ks = Kolmogorov-Smirnov test, wmw = Wilcoxon-Mann-Whitney test, w = Welch test, $t$ = Student's $t$ test.",fig.scap="a",fig.pos="!h">>=
+library(cowplot)
+
+levels(Y$ind) <- gsub("zeta","$\\\\zeta",gsub("welch","w",gsub("vartest","$F$",gsub("wilcox","wmw",gsub("_perm","_{\\\\mbox{ov}}$",gsub("_sig","",levels(Y$ind)))))))
+
+Y$ind <- factor(Y$ind, levels=levels(Y$ind)[c(1,5:6,4:2)])
+
+theme_set(theme_bw())
+plot_grid(
+  ggplot( subset(Y,H0==TRUE), aes(n,values,color=ind,shape=ind))  +
+    geom_hline(yintercept = .05, lty = 3) + geom_line() + geom_point() + 
+    guides(color="none",shape = "none") + ggtitle("[A] H0 true") +
+    ylab("P(reject H0)") + xlab("Sample size (per group)"),
+  
+  ggplot( subset(Y,H0==FALSE), aes(n,values,color=ind,shape=ind)) +
+    geom_hline(yintercept = .05, lty = 3) + geom_line() + geom_point() + 
+    theme(legend.title = element_blank()) + ggtitle("[B] H0 false") + 
+    ylab("P(reject H0)") + xlab("Sample size (per group)"),
+  
+  rel_widths = c(.6,1)
+
+  
+)
+
+@
+
+\section{Overlapping vs overall test}
+
+Usually, researchers are mainly interested in the difference in means, but it's important to remember that, for comparing means, variances should be homogeneous and data should be normally distributed. This implies that two additional tests need to be performed beforehand. The $\zeta_{\mbox{ov}}$ test is essentially an overall test that considers the means, variances, and shapes of the two groups simultaneously. This guarantees  good control of Type I error and a sufficient level of power (see Fig. \ref{fig:figpaper}) without particular assumptions. 
+
+Now, let's consider three separate tests: the $t$-test (for comparing means), the $F$-test (for comparing variances), and the KS-test (for comparing distributions). We'll also consider an overall test that is statistically significant if at least one of these three tests results in significance at the $\alpha = .05$ level. If the aim is to compare means, ideally, the $F$-test and the KS-test should not be statistically significant. This does not means that you can support the Null hypothesis, but simply that based on your data you don't have evidence to  reject it \cite{Wilkinson:1999}. 
+
+<<results='asis'>>=
+DDvar <- c("n","delta","mu","sigma","alpha")
+TEST_pval <- c("t_pval","vartest_pval","ks_test_pval")
+TEST_sig <- gsub("pval","sig",TEST_pval)
+
+ALL$overall_sig <- apply(ALL[,TEST_sig],1, function(x){
+  ifelse( sum(x)>0, TRUE, FALSE )
+})
+
+SIGtable <- do.call(rbind, lapply( ALL[,c(TEST_sig,"overall_sig")], function(x) {
+  prop.table( table(x) )
+}))
+
+#lapply(ALL[,c(TEST_sig,"overall_sig")], length )
+
+
+rownames(SIGtable) <- c("$t$","$F$","KS","overall")
+print( xtable( SIGtable, label="tab:sig", caption = paste0("Proportion of statistically significant (TRUE) and non-significant (FALSE) results for the three separate tests and the overall test $(N = ",scales::comma(nrow(ALL)),")$.") ), sanitize.rownames.function = function(x){x} )
+
+@
+
+Table \ref{tab:sig} reports the proportions of statistically significant (TRUE) and non-significant (FALSE) results for the three separate tests and the overall test. You should note that the proportion of significant results for the overall test is the highest (\Sexpr{round(SIGtable["overall","TRUE"],2)}), meaning that in approximately \Sexpr{round(SIGtable["overall","TRUE"]*100)}\% of cases, at least one of the three separate tests was significant.
+
+\subsection{Familywise Error Rate}
+
+Now, we generate three dummy columns indicating the Null hypothesis status (TRUE or FALSE) for the three separate tests, and one column for the overall test for which the Null is TRUE when all three Nulls are TRUE; i.e. $\delta = 0$, $\sigma = 1$ and $\alpha = 0$.   
+
+<<>>=
+VERITA <- c("H0_mean","H0_sigma","H0_alpha")
+ALL$H0_mean <- ifelse(ALL$mu == "0", TRUE, FALSE )
+ALL$H0_sigma <- ifelse(ALL$sigma == "1", TRUE, FALSE )
+ALL$H0_alpha <- ifelse(ALL$alpha == 0, TRUE, FALSE )
+ALL$H0_overall <- ALL$H0_TRUE 
+
+sc1TAB <- prop.table( table( test = ALL$overall_sig, ALL$H0_overall ), margin = 2 )
+sc1TAB <- cbind(test = rownames(sc1TAB), round(sc1TAB,2))
+
+typeIoverall <- aggregate( overall_sig ~ n + H0_overall, data = ALL, FUN = mean )
+
+
+@
+
+
+Table \ref{tab:over1} reports the Overall test results. By rows, we can read the proportion of tests that are statistically significant (sig.) or not significant (non-sig.); by columns, we can read the proportion of cases in which the overall Null hypothesis is TRUE or FALSE.
+
+
+<<results='asis'>>=
+
+addtorow <- list() 
+addtorow$pos <- list() 
+addtorow$pos[[1]] <- -1 
+addtorow$command <- c(" & \\multicolumn{2}{|c}{$H_0$ status}  \\\\") 
+colnames(sc1TAB)[1] <- "Test result"
+sc1TAB[,1] <- c("non-sig.","sig.")
+
+print( xtable( sc1TAB, align = "rl|cc", label = "tab:over1", caption = "Overall test results. Table rows report the proportion of tests that are statistically significant (sig.) or not significant (non-sig.); table columns report the proportion of cases in which the overall Null hypothesis is TRUE or FALSE." ), add.to.row = addtorow, include.rownames = FALSE, table.placement = "!h" )
+
+@
+
+From this table, it is clear that the overall test does not control for the Familywise Type I error: the proportion of false alarms (i.e., significant results when the Null is TRUE) is \Sexpr{sc1TAB[2,3]}. This result is independent of sample size; in the five experimental chosen $n$ values (\Sexpr{add_and(unique(ALL$n))}), the proportion of false alarms lies in the interval $[\Sexpr{range(subset( typeIoverall, H0_overall )$overall_sig)}]$.
+
+The $\zeta_{\mbox{ov}}$-test, instead, controls well the Type I error for each different sample size; the proportion of false alarms with respect sample size ranges from \Sexpr{paste(range(subset(PW,H0_TRUE)$zeta_perm_sig),collapse = " to ")}, as you can see in Fig. \ref{fig:figpaper}[A].
+
+\subsection{Adjusting p-values}
+
+Based on these considerations, we need to adjust the $p$-values when performing the three tests separately, for example by using the Bonferroni correction \cite<see>{Bonferroni:1936}. In this case (three tests), the adjustment can be performed with the formula: $p_{\mbox{adj}} = \mbox{min}(3p, 1)$, where $p$ indicates the original $p$-value.
+
+<<>>=
+
+adjPVAL <- data.frame( lapply(ALL[,TEST_pval], function(x){
+  ifelse( 3*x > 1, 1, 3*x )
+}))
+colnames(adjPVAL) <- paste0("adj_",colnames(adjPVAL))
+
+adjSIG <- data.frame( lapply(adjPVAL, function(x){
+  ifelse( x <= .05, TRUE, FALSE )
+}))
+colnames(adjSIG) <- gsub("pval","sig",colnames(adjSIG))
+sig <- apply(adjSIG,1,sum)
+adjSIG$adj_overall_sig <- ifelse(sig>0,TRUE,FALSE)
+
+ALL <- cbind(ALL,adjPVAL,adjSIG)
+
+@
+
+
+<<>>=
+sc2TAB <- prop.table( table( test = ALL$adj_overall_sig, ALL$H0_overall ), margin = 2 )
+sc2TAB <- cbind(test = rownames(sc2TAB), round(sc2TAB,2))
+
+typeIoverall_adj <- aggregate( adj_overall_sig ~ n + H0_overall, data = ALL, FUN = mean )
+
+#aggregate( zeta_perm_sig ~ n + H0_overall, data = ALL, FUN = mean )
+
+@
+
+<<results='asis'>>=
+colnames(sc2TAB)[1] <- "Test result"
+sc2TAB[,1] <- c("non-sig.","sig.")
+
+print( xtable( sc2TAB, align = "rl|cc", label = "tab:over2", caption = "Overall Bonferroni-adjusted test results. Table rows report the proportion of tests that are statistically significant (sig.) or not significant (non-sig.); table columns report the proportion of cases in which the overall Null hypothesis is TRUE or FALSE." ), add.to.row = addtorow, include.rownames = FALSE, table.placement = "!h" )
+
+@
+
+Table \ref{tab:over2} reports the same information as Table \ref{tab:over1} after Bonferroni adjustment has been applied.
+By rows, we have the proportions of tests that are statistically significant (sig.) or not significant (non-sig.); by columns, we have the proportions of cases in which the overall Null hypothesis is TRUE or FALSE. Now, Type I error is controlled at the .05 alpha level, but at the same time, the power, which is the proportion of significant results when the Null is FALSE, has decreased from \Sexpr{sc1TAB[2,2]} to \Sexpr{sc2TAB[2,2]}.
+
+However, this does not take into account the fact that if we are interested in the difference between the means, the other two tests ($F$ and KS) should be non-significant.
+Therefore, we need to define an indicator that takes into account the outcome of the $t$-test conditional on the outcome of the other two tests. In other words, power relative to the $t$-test is the probability of correctly rejecting the Null hypothesis of no difference between the means when sigma and shape are the same in the two samples.
+
+
+<<>>=
+ALL$t_test_assumption <- with(ALL,
+        ifelse( H0_sigma & H0_alpha, TRUE, FALSE ) )
+
+head( subset(ALL, t_test_assumption == FALSE & alpha == 0 )[,c("mu","alpha","omega","sigma","H0_sigma","H0_alpha","t_test_assumption")] )
+
+@
+
+<<adjPower,fig.width=4,fig.cap="Probability of rejecting $t$-test Null hypothesis after Bonferroni adjustment as a function of sample size (per group). 0 = scenario in which $t$-test assumptions are respected and there are no mean difference ($H_0$ is TRUE); 1 = scenario in which  $t$-test assumptions are respected and there is a difference in means  ($H_0$ is FALSE); 2 = scenario in which  $t$-test assumptions are not respected and there is a difference in means  ($H_0$ is FALSE); $\\zeta_{\\mbox{ov}}$ = $\\zeta$ overlapping test power curve.",fig.pos="!b">>=
+adjPW <- aggregate( adj_overall_sig ~ n + H0_overall+t_test_assumption, data = ALL, FUN = mean )
+adjPW$scenario <- factor(apply(adjPW[,2:3],1,function(x){
+  sum(!x)
+}))
+
+COLORI <- gg_color_hue(4)
+
+ggplot(adjPW, aes(n, adj_overall_sig, color = scenario)) + 
+  theme_bw() + 
+  geom_hline(yintercept = .05, lty = 3) + 
+  geom_line() + 
+  geom_point() + 
+  geom_line(aes(n, zeta_perm_sig, color = "zeta"), 
+            data = subset(PW, !H0_TRUE), lty = 2) + 
+  geom_point(aes(n, zeta_perm_sig, color = "zeta"), 
+             data = subset(PW, !H0_TRUE)) + 
+  xlab("sample size (per group)") + 
+  ylab("P(reject H0)") +
+  scale_color_manual(values = c("0" = COLORI[1], "1" = COLORI[2], "2" = COLORI[3], "zeta" = COLORI[4]),
+                     labels = c("0", "1", "2", "$\\zeta_{\\mbox{ov}}$"),
+                     name = "Scenario") +
+  guides(color = guide_legend(override.aes = list(linetype = c(1, 1, 1, 2)))) + theme(legend.title = element_blank())
+@
+
+In Figure \ref{fig:adjPower} are represented the probability of rejecting $t$-test Null hypothesis after Bonferroni adjustment as a function of sample size (per group). 0 indicates the scenario in which $t$-test assumptions are met and there are no mean difference (i.e. $H_0$ is TRUE); all these probabilities are under the .05 alpha level, meaning that the Type I error is under control. 1 indicates the scenario in which  $t$-test assumptions are met and there is a difference in means  ($H_0$ is FALSE); this curve represents the actual power level and is generally lower than the power of the $\zeta_{\mbox{ov}}$-test (represented by the dashed line).
+2 indicates the scenario in which  $t$-test assumptions are not met and there is a difference in means  ($H_0$ is FALSE); it represents the case in which we detect a difference between means but without respecting the correct conditions for performing the $t$-test. Finalli, the dashed line ($\zeta_{\mbox{ov}}$) represents the  $\zeta$-Overlapping test power curve; we remember that this test evaluate simultaneously means, variances, and shapes, and do not have any assumptions. 
+
+
+In Figure \ref{fig:adjPower}, the probability of rejecting the $t$-test Null hypothesis after Bonferroni adjustment is represented as a function of sample size (per group). 0 indicates the scenario in which $t$-test assumptions are met and there is no mean difference (i.e., $H_0$ is TRUE); all these probabilities are under the .05 alpha level, meaning that the Type I error is under control. 1 indicates the scenario in which $t$-test assumptions are met and there is a difference in means ($H_0$ is FALSE); this curve represents the actual power level and is generally lower than the power of the $\zeta_{\mbox{ov}}$-test (represented by the dashed line).
+2 indicates the scenario in which $t$-test assumptions are not met and there is a difference in means ($H_0$ is FALSE); it represents the case in which we detect a difference between means but without respecting the correct conditions for performing the $t$-test. Finally, the dashed line ($\zeta_{\mbox{ov}}$) represents the $\zeta$-Overlapping test power curve; we recall that this test evaluates simultaneously means, variances, and shapes, and does not have any assumptions.
+
+
+<<eval=FALSE>>=
+TEST_pval <- c("welch_pval","vartest_pval","ks_test_pval")
+TEST_sig <- gsub("pval","sig",TEST_pval)
+
+ALLw <- ALL[,1:35]
+ALLw$overall_sig <- apply(ALLw[,TEST_sig],1, function(x){
+  ifelse( sum(x)>0, TRUE, FALSE )
+})
+
+SIGtable <- do.call(rbind, lapply( ALLw[,c(TEST_sig,"overall_sig")], function(x) {
+  prop.table( table(x) )
+}))
+
+rownames(SIGtable) <- c("W","$F$","KS","overall")
+print( xtable( SIGtable, label="tab:sig", caption = paste0("Proportion of statistically significant (TRUE) and non-significant (FALSE) results for the three separate tests and the overall test $(N = ",scales::comma(nrow(ALL)),")$.") ), sanitize.rownames.function = function(x){x} )
+
+sc1TAB <- prop.table( table( test = ALL$overall_sig, ALL$H0_overall ), margin = 2 )
+sc1TAB <- cbind(test = rownames(sc1TAB), round(sc1TAB,2))
+
+addtorow <- list() 
+addtorow$pos <- list() 
+addtorow$pos[[1]] <- -1 
+addtorow$command <- c(" & \\multicolumn{2}{|c}{$H_0$ status}  \\\\") 
+colnames(sc1TAB)[1] <- "Test result"
+sc1TAB[,1] <- c("non-sig.","sig.")
+
+print( xtable( sc1TAB, align = "rl|cc", label = "tab:over1", caption = "Overall test results. Table rows report the proportion of tests that are statistically significant (sig.) or not significant (non-sig.); table columns report the proportion of cases in which the overall Null hypothesis is TRUE or FALSE." ), add.to.row = addtorow, include.rownames = FALSE, table.placement = "!h" )
+
+# adjusted p
+adjPVAL <- data.frame( lapply(ALLw[,TEST_pval], function(x){
+  ifelse( 3*x > 1, 1, 3*x )
+}))
+colnames(adjPVAL) <- paste0("adj_",colnames(adjPVAL))
+
+adjSIG <- data.frame( lapply(adjPVAL, function(x){
+  ifelse( x <= .05, TRUE, FALSE )
+}))
+colnames(adjSIG) <- gsub("pval","sig",colnames(adjSIG))
+sig <- apply(adjSIG,1,sum)
+adjSIG$adj_overall_sig <- ifelse(sig>0,TRUE,FALSE)
+
+ALLw <- cbind(ALLw,adjPVAL,adjSIG)
+
+sc2TAB <- prop.table( table( test = ALL$adj_overall_sig, ALL$H0_overall ), margin = 2 )
+sc2TAB <- cbind(test = rownames(sc2TAB), round(sc2TAB,2))
+
+colnames(sc2TAB)[1] <- "Test result"
+sc2TAB[,1] <- c("non-sig.","sig.")
+
+print( xtable( sc2TAB, align = "rl|cc", label = "tab:over2", caption = "Overall Bonferroni-adjusted test results. Table rows report the proportion of tests that are statistically significant (sig.) or not significant (non-sig.); table columns report the proportion of cases in which the overall Null hypothesis is TRUE or FALSE." ), add.to.row = addtorow, include.rownames = FALSE, table.placement = "!h" )
+
+adjPW <- aggregate( adj_overall_sig ~ n + H0_overall+t_test_assumption, data = ALL, FUN = mean )
+adjPW$scenario <- factor(apply(adjPW[,2:3],1,function(x){
+  sum(!x)
+}))
+
+COLORI <- gg_color_hue(4)
+
+ggplot(adjPW, aes(n, adj_overall_sig, color = scenario)) + 
+  theme_bw() + 
+  geom_hline(yintercept = .05, lty = 3) + 
+  geom_line() + 
+  geom_point() + 
+  geom_line(aes(n, zeta_perm_sig, color = "zeta"), 
+            data = subset(PW, !H0_TRUE), lty = 2) + 
+  geom_point(aes(n, zeta_perm_sig, color = "zeta"), 
+             data = subset(PW, !H0_TRUE)) + 
+  xlab("sample size (per group)") + 
+  ylab("P(reject H0)") +
+  scale_color_manual(values = c("0" = COLORI[1], "1" = COLORI[2], "2" = COLORI[3], "zeta" = COLORI[4]),
+                     labels = c("0", "1", "2", "$\\zeta_{\\mbox{ov}}$"),
+                     name = "Scenario") +
+  guides(color = guide_legend(override.aes = list(linetype = c(1, 1, 1, 2)))) + theme(legend.title = element_blank())
+
+
+@
+
+
+
+%\newpage
+%\subsection*{Legenda}
+%$\eta$ is the area of overlap
+%\noindent $\zeta$ is the area of non overlap, therefore $1 - \eta$
+%\noindent $\mu$ is the parameter of the mean of the normal standard 
+%\noindent $\sigma$ is the standard deviation of the normal standard
+%\noindent $\delta$ is the difference between the two means
+%\noindent $\xi$ is the location parameter of the skew-normal
+%\noindent $\omega$ is the scale parameter of the skew-normal
+%\noindent $\alpha$ is the shape parameter of the skew-normal
+
+%\clearpage
+
+\bibliographystyle{apacite}
+\bibliography{overlapping}
+
+\section*{Used R packages}
+
+%%\url{https://nwfsc-timeseries.github.io/atsa2019/Lectures/Week%205/lec_10_bayes.html#1}
+
+<<results='markup',message=FALSE>>=
+options(width = 80)
+library(report)
+SI <- report(sessionInfo())
+PACK <- attr(SI,"table")$Package
+REF <- attr(SI,"table")$Reference
+REF <- gsub("&","\\\\&",gsub("<","",gsub(">","",gsub("_","\\\\_",REF))))
+
+REF <- REF[!grepl("kandinsky",PACK)]
+PACK <- PACK[!grepl("kandinsky",PACK)]
+@
+
+\begin{itemize}
+<<results='asis'>>=
+for (k in 1:length(PACK)) {
+  cat(paste0("\\item \\texttt{",PACK[k],"}. "))
+  cat(REF[k],"\n")
+}
+@
+\end{itemize}
+
+%\clearpage
+\subsection*{Session Info}
+<<results='markup'>>=
+sI <- sessionInfo()
+print(sI,locale = FALSE)
+@
+
+\end{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{FINO QUI}
+\bibliographystyle{apacite}
+\bibliography{overlapping}
+<<>>=
+opts_chunk$set(eval = FALSE)
+@
+\end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+
+\subsection{Definizione dell'errore di I tipo}
+
+Se abbiamo più test abbiamo anche diverse definizioni di errore di I tipo \cite{Westfall+Young:1993}
+
+\begin{itemize}
+ \item \textbf{Familywise Error Rate (FWER)}
+è la probabilità di rigettare almeno una ipotesi nulla vera.
+ \item \textbf{False Discovery Rate (FDR)} è il valore atteso della proporzione di ipotesi nulle rigettate per errore.
+ \item \textbf{Per-Comparison Error Rate (PCER)} è la probabilità di rigettare una qualunque ipotesi nulla per errore.
+ \end{itemize}
+
+
+<<results='markup'>>=
+FWER_data <- subset( PVAL, H0_overall )
+FWER_data$fwer <- apply( FWER_data[, TEST], 1, function(x){
+  sum(x)>0
+})
+
+sum(FWER_data$fwer) / nrow(FWER_data)
+
+PVAL$H1_overall <- ifelse( !(PVAL$H0_mean) & !(PVAL$H0_sigma) & !(PVAL$H0_alpha) , TRUE, FALSE ) 
+H0_data <- subset( PVAL, !H1_overall )
+H <- data.frame( t(sapply(1:nrow(H0_data), function(b){
+  pcer <- sum( H0_data[b,TEST]&H0_data[b,VERITA] ) / sum( H0_data[b,VERITA]) 
+  fdr <- sum( H0_data[b,TEST]&H0_data[b,VERITA] ) / sum( H0_data[b,TEST])   
+  fdr <- ifelse( is.nan(fdr), 0, fdr )
+  out <- c(fdr,pcer)
+  names(out) <- c("fdr","pcer")
+  out
+})))
+H0_data$fdr <- H$fdr
+H0_data$pcer <- H$pcer
+
+mean( H$fdr, na.rm = TRUE )
+mean( H$pcer )
+
+
+@
+
+<<>>=
+
+B <- aggregate( overall_pval ~ n+H0_overall, data = FWER_data, length )
+typeIoverall <- aggregate( overall_pval ~ n+H0_overall, data = FWER_data, sum )
+typeIoverall$sig <- typeIoverall$overall_pval/B$overall_pval
+typeIoverall$test <- "fwer"
+
+Z <- aggregate( zeta_perm_pval ~ n+H0_overall, data = FWER_data, sum )
+Z$sig <- Z$zeta_perm_pval/B$overall_pval
+Z$test <- "$\\zeta_{OV}$"
+
+typeIoverall <- rbind( typeIoverall[,c("n","H0_overall","sig","test")],
+                       Z[,c("n","H0_overall","sig","test")] )
+
+B <- aggregate( fdr ~ n+H0_overall, data = H0_data, length )
+J <- aggregate( fdr ~ n+H0_overall, data = H0_data, mean )
+J$sig <- J$fdr
+J$test <- "fdr"
+typeIoverall <- rbind( typeIoverall[,c("n","H0_overall","sig","test")],
+                       subset(J,H0_overall)[,c("n","H0_overall","sig","test")] )
+
+J <- aggregate( pcer ~ n+H0_overall, data = H0_data, mean )
+J$sig <- J$pcer
+J$test <- "pcer"
+typeIoverall <- rbind( typeIoverall[,c("n","H0_overall","sig","test")],
+                       subset(J,H0_overall)[,c("n","H0_overall","sig","test")] )
+
+ggplot( typeIoverall, aes(n,sig, color=test, shape = test) ) + theme_bw() + geom_hline( yintercept = .05, lty = 3) + geom_line() + geom_point() + ylab("$P(\\mbox{reject } H_0)$") + xlab("Sample size (per group)")
+
+
+@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{FINO QUI}
+\bibliographystyle{apacite}
+\bibliography{overlapping}
+<<>>=
+PVAL <- ALL
+opts_chunk$set(eval = FALSE)
+@
+\end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+Creiamo tre variabili booleane che indicano con `TRUE` se il test ha dato esito corretto e coerente con $H_0$.
+
+<<echo=TRUE>>=
+XOR <- xor( ALL[,TEST_sig], ALL[,VERITA] )
+colnames(XOR) <- gsub("_pval","_ok", colnames(XOR) )
+ALL <- cbind(ALL,XOR)
+@
+
+
+
+
+<<>>=
+
+table( adjPVAL$t_test_assumptions, adjPVAL$H0_mean )
+
+prop.table( table(adjPVAL$t_test_assumptions, adjPVAL$overall_pval_sig, adjPVAL$H0_mean) )
+
+adjPW <- aggregate( overall_pval_sig ~ n + H0_mean + t_test_assumptions, data = adjPVAL, FUN = mean )
+adjPW$sig <- adjPW$overall_pval_sig
+adjPW$method <- "overall"
+
+ZpermPW <- aggregate( zeta_perm_pval_sig ~ n + H0_mean + t_test_assumptions, data = adjPVAL, FUN = mean )
+ZpermPW$sig <- ZpermPW$zeta_perm_pval_sig
+ZpermPW$method <- "$\\zeta_{OV}$"
+
+adjPW <- rbind(adjPW[,-4], ZpermPW[,-4])
+adjPW$t_test_assumptions <- factor( ifelse( adjPW$t_test_assumptions, "met", "not met" ) )
+
+#ggplot( adjPW, aes( n, sig, color = t_test_assumptions )) + facet_wrap( ~ factor( t_H0_true, levels = c(TRUE,FALSE) ) ) + geom_hline( yintercept = .05, lty = 3 ) + geom_line() + geom_line( aes( n, sig), data = ZpermPW )
+
+
+@
+
+
+<<>>=
+
+ggplot( subset( adjPW, method == "overall" ), aes( n, sig, color = t_test_assumptions , shape = t_test_assumptions ) ) + facet_wrap( ~ factor( H0_mean, levels = c(TRUE,FALSE) ) ) + geom_hline( yintercept = .05, lty = 3 )  + geom_line() + geom_point() + labs( color = "t test assumptions", shape = "t test assumptions" )
+
+@
+

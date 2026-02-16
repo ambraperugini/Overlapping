@@ -1,6 +1,6 @@
-% Created by tikzDevice version 0.12.6 on 2024-12-19 14:50:08
+% Created by tikzDevice version 0.12.6 on 2026-02-06 15:12:04
 % !TEX encoding = UTF-8 Unicode
-\documentclass[twocolumn]{article}
+\documentclass[10pt]{article}
 \nonstopmode
 
 \usepackage{tikz}
@@ -16,11 +16,11 @@
 \newcommand{\Sexpr}[1]{}       % will only be parsed by R
 
 
-%\documentclass[10pt]{article}
+\pagestyle{myheadings}
 \usepackage{color}
 \usepackage[italian,english]{babel}
-\usepackage[colorlinks,bookmarksopen,bookmarksnumbered,citecolor=red,urlcolor=red]{hyperref}
-\usepackage[margin=2cm]{geometry}
+\usepackage{hyperref}
+\usepackage[margin=3cm]{geometry}
 \usepackage{bm}
 \usepackage{tikz}
 \usepackage[utf8x]{inputenc}
@@ -28,6 +28,7 @@
 \usepackage{caption}
 \captionsetup{font=footnotesize}
 \usepackage{apacite}
+\usepackage{booktabs}
 % \usepackage[bottom]{footmisc} 
 
 %\newcommand\BibTeX{{\rmfamily B\kern-.05em \textsc{i\kern-.025em b}\kern-.08em
@@ -60,10 +61,10 @@
 \end{scope}
 \begin{scope}
 \path[clip] ( 28.35, 16.21) rectangle (212.64,200.51);
-\definecolor{fillColor}{gray}{0.92}
+\definecolor{fillColor}{RGB}{255,255,255}
 
 \path[fill=fillColor] ( 28.35, 16.21) rectangle (212.64,200.51);
-\definecolor{drawColor}{RGB}{255,255,255}
+\definecolor{drawColor}{gray}{0.92}
 
 \path[draw=drawColor,line width= 0.6pt,line join=round] ( 28.35, 34.05) --
 	(212.64, 34.05);
@@ -279,6 +280,9 @@
 \node[text=drawColor,anchor=base,inner sep=0pt, outer sep=0pt, scale=  1.00] at (194.81,149.52) {0.46};
 
 \node[text=drawColor,anchor=base,inner sep=0pt, outer sep=0pt, scale=  1.00] at (194.81,179.24) {1};
+\definecolor{drawColor}{gray}{0.20}
+
+\path[draw=drawColor,line width= 0.6pt,line join=round,line cap=round] ( 28.35, 16.21) rectangle (212.64,200.51);
 \end{scope}
 \begin{scope}
 \path[clip] (  0.00,  0.00) rectangle (289.08,216.81);
