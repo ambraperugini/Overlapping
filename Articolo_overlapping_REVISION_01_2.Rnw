@@ -966,14 +966,22 @@ ALL10 <- subset(ALL,alpha == 10)
 <<correlazioni,fig.cap=paste0("Correlation matrix among $p$-values $(N = ",nrow(ALL),")$ in chosen tests. Note: $\\zeta_{\\mbox{ov}}$ = $\\zeta$  overlapping test, $F$ = variance test, ks = Kolmogorov-Smirnov test, wmw = Wicoxon-Mann-Whitney test, w = Welch test, $t$ = Student's $t$ test."),fig.pos="!t",fig.width=4, message=FALSE>>=
 options(digits = 10)
 RR <- cor(ALL[,INDICI])
-colnames(RR) <- rownames(RR) <- gsub("welch","w",gsub("ks_test","ks",gsub("vartest","$F$",gsub("wilcox","wmw",gsub("zeta_perm","$\\\\zeta\\_{\\\\mbox{ov}}$",gsub("_pval","",rownames(RR)))))))
 
-colnames(RR)[1] <- rownames(RR)[1] <- gsub("t","$t$", colnames(RR)[1])
+# Cambia questa riga - rimuovi i simboli LaTeX
+colnames(RR) <- rownames(RR) <- gsub("welch","w",
+                                     gsub("ks_test","ks",
+                                     gsub("vartest","F",
+                                     gsub("wilcox","wmw",
+                                     gsub("zeta_perm","zeta_ov",
+                                     gsub("_pval","",rownames(RR)))))))
+
+# Cambia anche questa - rimuovi i simboli LaTeX
+colnames(RR)[1] <- rownames(RR)[1] <- "t"
 
 RR[1,2] <- RR[2,1] <- .99
 
-plot_correlation(RR,textsize = 13, angle = 0, values = TRUE, corrsize = 3.5, U = c(-2,0,-3,-.5),legendsize = 11)
-
+plot_correlation(RR, textsize = 13, angle = 0, values = TRUE, corrsize = 3.5, 
+                 U = c(-2,0,-3,-.5), legendsize = 11)
 @
 
 
