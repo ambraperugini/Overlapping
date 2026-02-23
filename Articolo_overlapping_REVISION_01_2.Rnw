@@ -37,10 +37,7 @@ knitr::clean_cache()
 rm(list=ls())
 main <- getwd()
 
-# main <- "~/lavori/overpermutation/"
-# if (!grepl("bayes",Sys.info()["user"])) main <- gsub("~","~/MEGAsync",main)
 datadir <- paste0(main,"data/")
-# KUtils::pulizia(paste(main,"knitr/",sep=""), c(".Rnw",".bib","pdf"),TRUE)
 
 @
 
@@ -98,19 +95,19 @@ sninvpar <- function( mu=0, sigma=1, xi=NULL, omega=NULL, alpha=0 ) {
   
 }
 
-# +++++++++ funzione colori default
+# +++++++++ default colour function
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 
 # +++++++++++++++++++++++++++++++
-#' @name min_normal_uniform
-#' @description Calcola il minimo tra la densità di una normale e di una uniforme
-#' @param x = x vector
-#' @param normPars = parametri della normale: media e dev. standard
-#' @param unifPars = parametri della uniforme: minimo e massimo
-#' #' @param return.all = logical, if \code{TRUE} restituisce il data set completo delle densità delle due distribuzioni
+#' @#' @name min_normal_uniform
+#' @description Computes the minimum between the density of a normal distribution and a uniform distribution.
+#' @param x Numeric vector of x values.
+#' @param normPars Parameters of the normal distribution: mean and standard deviation.
+#' @param unifPars Parameters of the uniform distribution: minimum and maximum.
+#' @param return.all Logical. If \code{TRUE}, returns the full dataset containing the densities of both distributions.
 min_normal_uniform <- function( x = NULL, normPars = c(0,1), unifPars = c(0,1), return.all = FALSE ) {
   
   if (is.null(x)) x <- seq(-5,5,by=.1)
@@ -133,15 +130,15 @@ min_normal_uniform <- function( x = NULL, normPars = c(0,1), unifPars = c(0,1), 
 
 # +++++++++++++++++++++++++++++++++++
 #' @name min_dskew_normal
-#' @description Calcola il minimo tra due densità Skew-Normal
-#' @param x = x vector
-#' @param xi = vector of location parameters
-#' @param omega = vector of scale parameters
-#' @param alpha = vector of skewness parameters
-#' @param plot = logical, if \code{TRUE} produce la rappresentazione grafica delle densità 
-#' e dell'area di sovrapposizione
-#' @param return.all = logical, if \code{TRUE} restituisce il data set completo delle 
-#' densità delle due distribuzioni
+#' @description #' @description Computes the minimum between two Skew-Normal density functions.
+#' @param x Numeric vector of x values.
+#' @param xi Vector of location parameters.
+#' @param omega Vector of scale parameters.
+#' @param alpha Vector of skewness parameters.
+#' @param plot Logical. If \code{TRUE}, produces a graphical representation of the densities
+#' and their overlapping area.
+#' @param return.all Logical. If \code{TRUE}, returns the full dataset containing the
+#' densities of the two distributions.
 min_dskew_normal <- function( x = seq( -5, 5, by = .01 ), xi = c(0,0), omega = c(1,1), alpha = c(0,0), 
                               return.all = FALSE ) {
   
@@ -164,21 +161,22 @@ min_dskew_normal <- function( x = seq( -5, 5, by = .01 ), xi = c(0,0), omega = c
 
 # ++++++++++++++++++++++++++++
 #' @name permTest
-#' @description Esegue test di permutazione su overlapping, 
-#'differenza tra medie e rapporto tra varianze
-#' @param xList = lista di due elementi (\code{x1} e \code{x2} ) 
-#' @param B = numero di permutazioni da effettuare
-#' @param ov.type = character, type of index. If type = "2" returns the proportion of the overlapped area between two or more densities. 
-#' @note Il confronto tra le medie è ad una sola coda e 
-#'testa l'ipotesi che le medie siano uguali vs l'ipotesi
-#'che la seconda sia maggiore della prima (\code{mean(x2) > mean(x1)})
-#' @return Restituisce una lista con tre elementi:
-#' obs = vettore dei valori osservati di non-sovrapposizione 
-#'       \coed{1-eta}, differenza tra le medie (\code{mean(x2)-mean(x1)}), 
-#'       rapporto tra le varianze
-#' perm = matrice Bx3 con i valori delle stesse statistiche ottenute
-#'        via permutazione
-#' pval = vettore con i tre p-values   
+#'#' @description Performs permutation tests on the overlapping index,
+#' mean difference, and variance ratio.
+#' @param xList A list with two elements (\code{x1} and \code{x2}).
+#' @param B Number of permutations to perform.
+#' @param ov.type Character, type of index. If \code{type = "2"}, returns the proportion
+#' of overlapped area between two or more densities.
+#' @note The comparison between means is one-tailed and tests the hypothesis
+#' of equal means against the alternative that the second mean is greater
+#' than the first (\code{mean(x2) > mean(x1)}).
+#' @return A list with three elements:
+#' \item{obs}{Vector of observed statistics: non-overlap value
+#' (\code{1 - eta}), mean difference (\code{mean(x2) - mean(x1)}),
+#' and variance ratio.}
+#' \item{perm}{A B x 3 matrix containing the same statistics obtained
+#' through permutation.}
+#' \item{pval}{Vector containing the three corresponding p-values.   
 permTest <- function( xList, B = 1000, ov.type = c("1","2")) {
   
   require(overlapping)
@@ -214,15 +212,16 @@ permTest <- function( xList, B = 1000, ov.type = c("1","2")) {
 
 # ++++++++++++++++++++++++++
 #' @name numeriAPA
-#' @description Toglie lo zero dagli indici inclusi nell'intervallo [0,1], secondo norme APA
+#' #' @description Removes the leading zero from values in the interval [0, 1],
+#' according to APA reporting guidelines.
 numeriAPA <- function(x) {
   gsub("0\\.","\\.",as.character(x))
 }
 
 ## +++++++++++++++++++++++++++++++++++++++++++
-#' @title Grafico correlazioni
-#' @param RR = correlation matrix
-#' @param U = vettore con i margini del grafico
+#' #' @title Correlation plot
+#' @param RR Correlation matrix.
+#' @param U Vector specifying the plot margins.
 plot_correlation <- function(RR,values=FALSE,textsize=12,legendsize=10,angle=0, corrsize=4, U=c(0,0,0,0), short.names = FALSE) {
   require(ggplot2)
   require(reshape2)
@@ -249,16 +248,14 @@ plot_correlation <- function(RR,values=FALSE,textsize=12,legendsize=10,angle=0, 
 
 # ++++++++++++++++++++++++++++
 #' @name perm.test
-#' @description Esegue test di permutazione su overlapping, 
-#'differenza tra medie e rapporto tra varianze
-#' @param x = lista di due elementi (\code{x1} e \code{x2} ) 
-#' @param B = numero di permutazioni da effettuare
-#' @return Restituisce una lista con tre elementi:
-#' obs = valore osservato di non-sovrapposizione 
-#'       \coed{1-eta}
-#' perm = valori della stessa statistica ottenute
-#'        via permutazione
-#' pval = p-value   
+#' #' @description Performs a permutation test on the overlapping index.
+#' @param x A list with two elements (\code{x1} and \code{x2}).
+#' @param B Number of permutations to perform.
+#' @return A list with three elements:
+#' \item{obs}{Observed value of non-overlap (\code{1 - eta}).}
+#' \item{perm}{Values of the same statistic obtained via permutation.}
+#' \item{pval}Permutation-based p-value.
+#' 
 perm.test <- function (x, B = 1000, 
                return.distribution = FALSE, ...)
 {
@@ -506,17 +503,17 @@ DATA <- read.csv("EngTurk.csv")
 table(DATA$item[DATA$ItemType == "High_freq" & DATA$Language == "English"])
 table(DATA$item[DATA$ItemType == "Low_freq" & DATA$Language == "English"])
 # blue eyes 
-# poor children
+# children
 
 low_frequency <- DATA$ReactionTime[DATA$item == "poor children"]
 high_frequency <- DATA$ReactionTime[DATA$item == "blue eyes"]
 
-# CREA xList SUBITO DOPO AVER DEFINITO I DATI
+# Create xList immediately after defining the data
 library(datawizard)
 library(overlapping)
 xList <- list( x1 = low_frequency, x2 = high_frequency ) 
 
-# Calcola obsz E tutte le statistiche NECESSARIE
+# Compute observed zeta (obsz) and all required statistics
 obsz <- 1 - overlap( xList )$OV
 MX <- lapply(xList, mean, na.rm=T)
 SDX <- lapply(xList, var, na.rm=T)
@@ -525,7 +522,7 @@ SKX <- lapply(xList, skewness, na.rm=T)
 
 
 <<permtest2,results='hide',cache=TRUE, echo=FALSE>>=
-# Calcola zperm
+# Compute permutation values (zperm)
 B <- 2e3
 n <- length(xList[[1]])
 zperm <- sapply(1:B, function(x){
@@ -995,7 +992,6 @@ ALL10 <- subset(ALL,alpha == 10)
 options(digits = 10)
 RR <- cor(ALL[,INDICI])
 
-# Cambia questa riga - rimuovi i simboli LaTeX
 colnames(RR) <- rownames(RR) <- gsub("welch","w",
                                      gsub("ks_test","ks",
                                      gsub("vartest","F",
@@ -1003,7 +999,7 @@ colnames(RR) <- rownames(RR) <- gsub("welch","w",
                                      gsub("zeta_perm","zeta_ov",
                                      gsub("_pval","",rownames(RR)))))))
 
-# Cambia anche questa - rimuovi i simboli LaTeX
+
 colnames(RR)[1] <- rownames(RR)[1] <- "t"
 
 RR[1,2] <- RR[2,1] <- .99
@@ -1062,7 +1058,6 @@ In relation to type I error, almost all tests show a good performance, whereas t
 \begin{figure*}[!h]
 <<global,fig.width=7>>=
 
-# Rimuovi i simboli LaTeX dalle etichette
 levels(Y$ind) <- gsub("zeta","zeta",
                      gsub("welch","w",
                      gsub("vartest","F",
