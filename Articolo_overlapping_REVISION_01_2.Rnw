@@ -13,6 +13,7 @@
 \captionsetup{font=footnotesize}
 \usepackage{apacite}
 \usepackage{booktabs}
+
 % \usepackage[bottom]{footmisc} 
 
 %\newcommand\BibTeX{{\rmfamily B\kern-.05em \textsc{i\kern-.025em b}\kern-.08em
@@ -20,25 +21,27 @@
 <<include=FALSE>>=
 library(knitr)
 options(digits=3)
-opts_chunk$set(fig.width=3, fig.height=3, dev="tikz",fig.align='center',echo=FALSE,results="hide",comment=NA,prompt=FALSE,warning=FALSE, cache = TRUE)
+opts_chunk$set(fig.width=3, fig.height=3, dev="pdf",fig.align='center',echo=FALSE,results="hide",comment=NA,prompt=FALSE,warning=FALSE, cache = TRUE)
 @
 \usepackage{float}
 \floatstyle{boxed}
 \newfloat{program}{btp}{lop}
 \floatname{program}{Box}
-\usepackage{mdframed}
-\definecolor{boxcol}{RGB}{213,226,238}
-\newmdenv[linecolor=boxcol,backgroundcolor=boxcol]{comments}
+%\usepackage{mdframed}
+%\definecolor{boxcol}{RGB}{213,226,238}
+%\newmdenv[linecolor=boxcol,backgroundcolor=boxcol]{comments}
 
 
 <<>>=
+knitr::clean_cache()
 rm(list=ls())
-main <- "/Users/ambraperugini/Documents/Work/projects/Overlapping/"
+main <- getwd()
 
 # main <- "~/lavori/overpermutation/"
 # if (!grepl("bayes",Sys.info()["user"])) main <- gsub("~","~/MEGAsync",main)
 datadir <- paste0(main,"data/")
 # KUtils::pulizia(paste(main,"knitr/",sep=""), c(".Rnw",".bib","pdf"),TRUE)
+
 @
 
 
@@ -308,29 +311,26 @@ perm.test <- function (x, B = 1000,
 @
 
 \begin{abstract}
-The present study introduces the application of the permutation test to the Overlapping Index, an effect size measure for comparing density distributions of groups or conditions to estimate effects of interest in psychological science. Starting with common scenarios in psychological science research, the paper highlights the importance of relying on statistical methods that are resilient to the complexities inherent in psychological data, where assumption violations are often inevitable. A Simulation study is presented to illustrate the performance and reliability of the proposed test compared to commonly used alternatives. The findings demonstrate the good control of Type I error of the $\zeta$-Overlapping test and how this approach outperforms in terms of power all other tests considered in the simulation, already with small samples. The paper offers practical guidance and demonstrates the advantages of this method, emphasizing its potential to enhance transparency and rigor in psychological data analysis by shifting focus from traditional significance testing to comprehensive distributional evaluations.
+\textcolor{red}{Psychological research frequently relies on statistical tests targeting single distributional parameters, typically means, despite empirical data often differing in variance, skewness, or overall shape. We introduce the $\zeta$-Overlapping test, a permutation-based inferential procedure built on the Overlapping Index, an effect size quantifying similarity between empirical distributions. The proposed approach evaluates global distributional differences without relying on parametric assumptions. Through simulations manipulating mean, variance, skewness, and sample size, we compare the $\zeta$-Overlapping test with commonly used procedures (t, Welch, Wilcoxon–Mann–Whitney, Kolmogorov–Smirnov, and variance tests). Results show accurate Type I error control and substantially higher power than parameter-specific tests across a wide range of non-normal scenarios, with strong performance even at small sample sizes. An applied example using reaction-time data demonstrates how distributional overlap detects differences missed by mean-based analyses. Rather than replacing traditional tests, the method provides a theoretically aligned global assessment that encourages distribution-aware inference and integration of visualization and descriptive analysis into statistical workflows. The $\zeta$-Overlapping framework supports ongoing methodological shifts in psychological science toward robust, assumption-light, and interpretable statistical reasoning.}
+
 \end{abstract}
 
-Keywords: simulation, type I error, power, data visualization
+Keywords: \textcolor{red}{simulation, type I error, data visualization, reaction time, Nonparametric inference}
 
 \section{Statistical testing choices in Psychology}
 
-\textcolor{red}{In psychological research, it is common to compare two groups or conditions to determine whether they differ. Traditionally, researchers use statistical tests that focus on a single parameter, such as the mean or variance, and rely on assumptions like normality and homogeneity of variance. However, real-world data often violate these assumptions, and differences may arise in aspects beyond central tendency. At the same time, researchers are often interested in determining whether groups or conditions can be considered sufficiently similar to rule out relevant dissimilarities. Such practice is involved in preliminary/baseline checks and often relies on the use of multiple tests (on mean and variance). In this paper, we propose a new test based on the overlap between empirical distributions. The test derives form the Overlapping Index \cite{gini1943nuovi, overlapping:package}, which is the area intersected by two or more probability density functions, allowing to easily quantify the similarity or difference among samples \cite{inman1989overlapping}. The implementation of the test through permutations permits to test global differences without relying on rigid assumptions.}
+\textcolor{red}{Cognitive psychology frequently relies on comparisons between experimental conditions to infer psychological effects. Standard analyses typically focus on single summary statistics, such as mean differences, and depend on assumptions that are rarely satisfied by behavioral data. Yet cognitive measures often differ in dispersion, skewness, or tail behavior rather than central tendency alone. Researchers also often need to demonstrate that groups are comparable before interpreting experimental effects, for instance, to argue that observed differences are attributable to a manipulation rather than pre-existing sample characteristics. In practice, this comparability is usually inferred from non-significant differences in group means, sometimes accompanied by separate tests of variance, implicitly treating equality of means as evidence of overall similarity. However, groups with similar averages may still differ substantially in distributional structure, leading researchers to rely on multiple parameter-specific tests that provide only a partial assessment of similarity. In this work, we propose a distribution-based statistical test that evaluates both similarity and difference by measuring the overlap between empirical distributions. The test derives form the Overlapping Index \cite{gini1943nuovi, overlapping:package}, which is the area intersected by two or more probability density functions, allowing to easily quantify the similarity or difference among samples \cite{inman1989overlapping}. The implementation of the test through permutations permits to test global differences without relying on rigid assumptions.}
 
     \vspace{0.2cm}
 
-\textcolor{red}{   Classic examples, like reaction times (RTs), indicate how specific measures approximate a sufficient trade-off between experimental precision and ecological feasibility across settings and techniques during the data collection process, and for example, this is true by comparing the framework of in lab \textit{vs} online data collection \cite{semmelmann2017online}. Nevertheless, even in the case of reaction times which have widespread and solid epistemic rationale of use \cite{grosjean2001timing, proctor2018hick, silverman2010simple} significance testing often relies on the rigid application of a few statistical methods that have gained popularity among the scientific community and are reinforced by formal guidelines \cite{cumming2012statistical}, even if their limits and risks have always been noted in the field of psychology and beyond \cite<e.g.>{boneau1960effects}.}
-   
-       \vspace{0.2cm}
+\textcolor{red}{The need for a distribution-level approach is especially clear in research areas where psychological data naturally depart from symmetry and homogeneity assumptions. Reaction time paradigms- such as attentional cueing e.g., Posner cueing task; \cite{calignano2024words,posner1980orienting}, lexical decision tasks \cite{gastaldon2025linguistic,balota2011moving}, social cueing tasks \cite{lorenzoni2023linguistic,geiger2018social}, and eye-tracking or pupillometric studies \cite{calignano2021unique,cavanagh2014eye}, typically yield right-skewed distributions containing outliers \cite{ratcliff1993methods,heathcote2002quantile}. In these contexts, mean-based tests may indicate no difference even when the distributions differ substantially in spread or shape, and even significant mean effects fail to capture the full structure of the data \cite{matzke2009psychological,rieger2020model,pastore2019measuring}.}
 
-\textcolor{red}{   In particular, reaction time tasks such as attentional cueing (Calignano et al., 2025), lexical tasks (Gastaldon \& Calignano, 2025; Peressotti et al., 2010), Social Cueing tasks (Lorenzoni et al.2024), and eye-tracking tasks (Calignano et al., 2021), the data are typically right-skewed and contain outliers. A traditional $t$-test may fail to capture differences if the means are similar, even though the distributions could diverge significantly in shape. Nevertheless, even in cases of actual differences detectable with a $t$-test, RTs should be analysed with tests that are able to capture the true generative nature of the data.}
-   
-       \vspace{0.2cm}
+\vspace{0.2cm}
 
-\textcolor{red}{Developmental studies are another practical example. For instance, comparing infants’s performance, changes often arise not only in mean scores but in variability and strategy use (ManyBabies Consortium, 2020; Byers-Heinlein et al., 2021). Finally, in clinical contexts , comparing anxiety scores between clinical and control groups, or between patients and their caregivers (Spaggiari et al., 2024), the Overlapping Index and its related test can be particularly informative. For example, two groups may share similar means but differ sharply in variance or tail behavior (i.e., frequency of extreme scores).}
+\textcolor{red}{
+Comparable patterns emerge in other areas of psychological science. Developmental studies often reveal changes in variability and behavioral strategies rather than average performance \cite{manybabies2020quantifying,byersheinlein2021multilab,rouder2019psychometrics}. Similarly, in clinical contexts, comparisons of anxiety scores between clinical and control groups, or between patients and caregivers \cite{spaggiari2024examining}, may involve similar mean scores alongside pronounced differences in extreme responses \cite{knowles2021anxiety}. Across these domains, the inferential question shifts from whether averages differ to whether distributions themselves differ, motivating methods that directly quantify distributional similarity e.g., overlapping indices;\cite{pastore2019measuring,inman1989overlapping}.}
 
-    \vspace{0.2cm}
-
+\vspace{0.2cm}
 \textcolor{red}{To date, awareness on the importance of the generative process of the data is rising and there is a growing attention against blindly using statistical tools and analytical methods without a deep understanding of their assumptions and implications. \citeA{scheel2021hypothesis} caution against the routine and uncritical application of hypothesis tests detached from theoretical grounding advocating for theory-aligned analysis. In this spirit, the present proposal not only aims to guide the researcher in an aware and thoughtful choice of statistical tests, but also advocates for the implementation of descriptive statistics and data visualization in the routine workflow of data analysis, encouraging a more explicit focus on the structure of empirical distributions. As originally noted by \citeA{fisher1925theory}, the choice of a statistical test should always be guided by the context and purpose of its application.}
 
     \vspace{0.2cm}
@@ -339,11 +339,15 @@ Keywords: simulation, type I error, power, data visualization
    
        \vspace{0.2cm}
 
-\textcolor{red}{The $\zeta$-Overlapping test has three main advantages. First, the core strength of the $\zeta$-Overlapping test is that it derives from an effect size and as such is highly intuitive. By quantifying the degree of overlap two density distributions, it allows for an easy comprehension of the test. The focus of the test on the entire distribution of the data, combined with the solicitation to implement in workflow descriptive statistics and data visualization contributes to increasing awareness on the generative process of the data, as already mentioned, essential for drawing meaningful conclusions in psychological research.}
+\textcolor{red}{The $\zeta$-Overlapping test has four main advantages. First, the core strength of the $\zeta$-Overlapping test is that it derives from an effect size and as such is highly intuitive. By quantifying the degree of overlap two density distributions, it allows for an easy comprehension of the test. The focus of the test on the entire distribution of the data, combined with the solicitation to implement in workflow descriptive statistics and data visualization contributes to increasing awareness on the generative process of the data, as already mentioned, essential for drawing meaningful conclusions in psychological research.}
 
     \vspace{0.2cm}
 
 \textcolor{red}{The second advantage is its ability to simultaneously account for and compare the mean, variance, and shape with a single test. The $\zeta$-Overlapping test is a global distributional test, as such one can lower the inflation of false positive rates that can arise when multiple parameter-specific tests are applied sequentially, a scenario commonly encountered in preliminary or baseline checks. This particular use of the test aligns with \citeA{scheel2021hypothesis} recommendations by avoiding fishing expeditions for significant effects.}
+
+\vspace{0.2cm}
+
+\textcolor{red}{The third advantage relies in the fact that the proposed test can also be naturally extended to paired samples, making it suitable for repeated-measures designs commonly adopted in experimental psychology. In these settings, differences between conditions are evaluated within the same individuals, allowing individual variability to be explicitly preserved. The permutation procedure is implemented by shuffling condition labels within participants rather than across groups, thus maintaining the dependency structure of the data. This approach incorporates individual differences directly into the inferential process while providing a distribution-level comparison between conditions. An example based on real data illustrating this application is presented in the article, and all code required to reproduce the analyses is openly available.}
 
     \vspace{0.2cm}
 
@@ -448,8 +452,7 @@ Permutation tests, also known as randomization tests, are a class of nonparametr
 
     \vspace{0.2cm}
     
-The permutation approach allows for the adoption of any test statistic chosen by the user.
-For example, if we are thinking about comparing the means of the two samples, we could choose a $t$-test statistic; the data in the two groups are permuted and the $t$ value is calculated each time. If the two groups come from the same population, the $t$-statistic computed on the observed data should be close to 0; the $t$-statistic computed on randomly permuted data will also give values close to zero. Therefore, the randomly generated test statistic and the observed one have the same -- nonparametric -- distribution.  Otherwise, if the two groups come from populations with different means, the $t$-statistic computed on the observed data will be far from zero, while the $t$-statistic computed on the permuted data will be around zero.
+\textcolor{red}{The permutation approach allows the adoption of any test statistic chosen by the user, including statistics designed for paired samples. In the case of paired data, observations are not exchanged between groups; instead, condition labels are permuted within each participant. This means that the relationship between paired observations is preserved while testing whether the observed difference between conditions could arise by chance. As a result, the procedure naturally accounts for individual differences while maintaining the logic of permutation-based inference. For example, if we are thinking about comparing the means of the two manipulation checks within a sample, we could choose a $t$-test statistic for repeated measures; the data in the two conditions are permuted and the $t$ value is calculated each time. If the two conditions} come from the same population, the $t$-statistic computed on the observed data should be close to 0; the $t$-statistic computed on randomly permuted data will also give values close to zero. Therefore, the randomly generated test statistic and the observed one have the same -- nonparametric -- distribution.  Otherwise, if the two groups come from populations with different means, the $t$-statistic computed on the observed data will be far from zero, while the $t$-statistic computed on the permuted data will be around zero.
 
     \vspace{0.2cm}
 
@@ -463,12 +466,12 @@ where $B$ is the number of random permutations, $t$ is the $t$-statistic compute
 
     \vspace{0.2cm}
 
-The test will have power -- i.e., the probability of getting a $p\leq \alpha$ when the two samples are really different -- very close to the parametric $t$-statistic, and it will retain control over false positives even when the assumptions of normality are not met.
+The test will have power -- i.e., the probability of getting a $p\leq \alpha$ when the two conditions or two samples are really different -- very close to the parametric $t$-statistic, and it will retain control over false positives even when the assumptions of normality are not met.
 
     \vspace{0.2cm}
 
 It is important to note that the choice of which $t$-statistic to use is a user choice; different test statistics (e.g., difference of mean ranks, Kolmogorov-Smirnov, etc.) will produce tests with different power. For example, if the two samples differ only in their variability and not in their mean, the permutation test based on the $t$-statistic will have little or no power to detect that the two samples come from different populations.
-In this direction, this paper proposes to use the Overlapping Index as a test statistic that results to be powerful under a wide range of differences in distributions.
+In this direction, the present paper proposes to use the Overlapping Index as a test statistic that results to be powerful under a wide range of differences in distributions.
 
     \vspace{0.2cm}
 
@@ -494,12 +497,10 @@ The algorithm estimates the value of $\zeta$ on the observed data ($\hat{\zeta}$
 
     \vspace{0.2cm}
 
-\subsection{Applied workflow}
-
-\textcolor{red}{CONSIGLI SUL TITOLO DI QUESTA SEZIONE SONO BEN ACCETTI}
+\subsection{Illustrative example with real data}
 
 <<echo = FALSE>>=
-DATA<-read.csv(paste0(datadir,"EngTurk.csv"))
+DATA <- read.csv("EngTurk.csv")
 
 # works with high and low frequency in English
 table(DATA$item[DATA$ItemType == "High_freq" & DATA$Language == "English"])
@@ -507,41 +508,39 @@ table(DATA$item[DATA$ItemType == "Low_freq" & DATA$Language == "English"])
 # blue eyes 
 # poor children
 
-low_frequency <-DATA$ReactionTime[DATA$item == "poor children"]
+low_frequency <- DATA$ReactionTime[DATA$item == "poor children"]
 high_frequency <- DATA$ReactionTime[DATA$item == "blue eyes"]
 
-
-@
-
-<<>>=
+# CREA xList SUBITO DOPO AVER DEFINITO I DATI
 library(datawizard)
+library(overlapping)
 xList <- list( x1 = low_frequency, x2 = high_frequency ) 
-length(unlist(xList))
+
+# Calcola obsz E tutte le statistiche NECESSARIE
 obsz <- 1 - overlap( xList )$OV
 MX <- lapply(xList, mean, na.rm=T)
 SDX <- lapply(xList, var, na.rm=T)
 SKX <- lapply(xList, skewness, na.rm=T)
 @
 
-<<permtest2,fig.keep='none'>>=
+
+<<permtest2,results='hide',cache=TRUE, echo=FALSE>>=
+# Calcola zperm
 B <- 2e3
 n <- length(xList[[1]])
-zperm <- sapply( 1:B, function(x){
-  xperm <- sample( unlist( xList ) )
-  xListperm <- list( x1 = xperm[1:n], x2 = xperm[(n+1):(n*2 )] )
-  1 - overlap( xListperm )$OV
+zperm <- sapply(1:B, function(x){
+  xperm <- sample(unlist(xList))
+  xListperm <- list(x1 = xperm[1:n], x2 = xperm[(n+1):(n*2)])
+  1 - overlap(xListperm)$OV
 })
-#plot( density(zperm) )
-#abline( v = obsz, lty = 2 )
 @
 
 
-
-<<>>=
-PVAL <- (sum( zperm > obsz )+1) / (length( zperm )+1)
-PERMTEST <- perm.test( xList )
-TEX <- with( xList, t.test( x1, x2, var.equal = TRUE ) )
-TEXw <- with( xList, t.test( x1, x2) )
+<<echo=FALSE,cache=TRUE>>=
+PVAL <- (sum(zperm > obsz) + 1) / (length(zperm) + 1)
+PERMTEST <- perm.test(xList)
+TEX <- with(xList, t.test(x1, x2, var.equal = TRUE))
+TEXw <- with(xList, t.test(x1, x2))
 @
 
     \vspace{0.2cm}
@@ -551,7 +550,7 @@ TEXw <- with( xList, t.test( x1, x2) )
     \vspace{0.2cm}
 
 
-<<ex2,fig.cap=paste0("[A] Distribution of reaction times of word reading of high and low frequency words in English, in this case the non-overlapping area is $\\hat{\\zeta} = ",round(obsz,2),"$; [B] Distribution of $\\hat{\\zeta}$ obtained with ",B," permutations of the data."),fig.pos="!t", fig.width=6>>=
+<<ex2,fig.cap=paste0("[A] Distribution of reaction times of word reading of high and low frequency words in English. The overlapping area is $\\hat{\\eta} = ",round(1-obsz,2),"$, corresponding to a non-overlapping area of $\\hat{\\zeta} = 1 - \\hat{\\eta} = ",round(obsz,2),"$; [B] Distribution of $\\hat{\\zeta}$ obtained with ",B," permutations of the data."),fig.pos="!t", fig.width=6>>=
 x1List <- list( x1 = low_frequency, x2 = high_frequency ) 
 x1List[[1]] <- c(x1List[[1]], NA)
 Y <- stack(data.frame(x1List))
@@ -776,7 +775,7 @@ The Skew-Normal distribution is optimal for our purpose as it allows to have con
 \subsection{Simulation design}
 
 <<cache=FALSE>>=
-load(paste0(datadir,"R02_sim07.rda"))
+load("R02_sim07.rda")
 NTAB <- table(ALL$n,ALL$mu,ALL$sigma,ALL$alpha)
 @
 
@@ -954,7 +953,7 @@ Figure \ref{fig:correlazioni} represents the correlation matrix between the $p$-
 
 The $\zeta_{\mbox{ov}}$ test is highly correlated with the KS test, has a lower correlation with tests on means ($t$ and W) and ranks (WMW), and a medium correlation with the $F$ test.
 
-\textcolor{red}{The low correlations observed among the test statistics are expected, given that each test is designed to detect different aspects of the data - whether central tendency, variance, or overall distributional shape. This pattern reinforces the idea that tests are not interchangeable but rather complementary in what they capture. The $\zeta$-Overlapping test, by design, integrates sensitivity to multiple features, which may explain its lower correlations with more narrowly focused tests. Therefore, while the correlation matrix does not offer direct interpretive insight into test performance, it supports the broader claim that distinct tests yield distinct inferential perspectives.}
+\textcolor{red}{The lower correlations observed among the test statistics are expected, given that each test is designed to detect different aspects of the data - whether central tendency, variance, or overall distributional shape. This pattern reinforces the idea that tests are not interchangeable but rather complementary in what they capture. The $\zeta$-Overlapping test, by design, integrates sensitivity to multiple features, which may explain its lower correlations with more narrowly focused tests. Therefore, while the correlation matrix does not offer direct interpretive insight into test performance, it supports the broader claim that distinct tests yield distinct inferential perspectives.}
 
 <<>>=
 SAMPLE_prop <- .005
@@ -1021,7 +1020,7 @@ In relation to type I error, almost all tests show a good performance, whereas t
 
   \vspace{0.2cm}
 
-\textcolor{red}{Concerning power, the $\zeta$-Overlapping test is the second outperforming other tests with good control of Type I error, already with small sample sizes, with the only exception of the $F$-test which has higher power but bad control of Type I error}. From the graphical representation it is visible how two subgroups can be identified: one including the tests on means and ranks, not reaching adequate power even with large samples, and the second one formed by the $\zeta_{\mbox{ov}}$ and KS tests, reaching good power already from 100 observations, with the $\zeta_{\mbox{ov}}$ outperforming the KS test reaching good power already from 50 observations.
+\textcolor{red}{Concerning power, the $\zeta$-Overlapping test is the second outperforming other tests with good control of Type I error, already with small sample sizes, with the only exception of the $F$-test which has higher power but bad control of Type I error}. From the graphical representation it is visible how two subgroups can be identified: one including the tests on means and ranks, not reaching adequate power even with large samples, and the second one formed by the $\zeta_{\mbox{ov}}$ and KS tests, reaching good power already from 100 observations, with the $\zeta_{\mbox{ov}}$ outperforming the KS test reaching good power already from 50 observations. \textcolor{red}{\textbf{Remark} It is important to note that the six tests compared in this simulation evaluate different null hypotheses and are therefore sensitive to different aspects of distributional differences. Specifically: the $\zeta$-Overlapping test evaluates $H_0: \zeta = 0$ (complete distributional overlap); the $F$-test evaluates $H_0: \sigma^2_1 = \sigma^2_2$ (homoscedasticity); the Kolmogorov-Smirnov test evaluates $H_0: F(X_1) = F(X_2)$ (identical cumulative distribution functions); the Wilcoxon-Mann-Whitney test evaluates $H_0: P(X_1 > X_2) = 0.5$ (stochastic equality); the Welch test evaluates $H_0: \mu_1 = \mu_2$ allowing unequal variances; and the Student's $t$-test evaluates $H_0: \mu_1 = \mu_2$ assuming equal variances. The observed differences in Type I error control and power directly reflect these different inferential targets: tests targeting specific parameters (e.g., means or variances) will naturally show lower power when the true difference lies in other distributional features, while global tests like $\zeta_{ov}$ and KS are sensitive to a broader range of distributional deviations.}
 
 
 \begin{figure*}[!h]
@@ -1060,7 +1059,7 @@ Moreover, the present analysis evaluated the performance of various statistical 
 
   \vspace{0.2cm}
 
-In figure \ref{fig:global}, panel [A], the only test which is over-conservative in terms of Type I error is the KS test, yet reaching the nominal $.05$ level with bigger samples (over 400 observations). Instead, the $F$-test shows a bad control of Type I error, always exceeding the nominal level even with big sample size. All other tests, already from small samples, are in the range of $.045 - .055$, converging closer to $.05$ as sample size grows. From this analysis we can then conclude that most of the tests sufficiently control the Type I error, but caution is needed for the $F$-test even with big samples and with the KS test with small samples.
+In figure \ref{fig:global}, panel [A], the only test which is over-conservative in terms of Type I error is the KS test, yet reaching the nominal $.05$ level with bigger samples (over 400 observations). Instead, the $F$-test shows a bad control of Type I error, always exceeding the nominal level even with big sample size. All other tests, already from small samples, are in the range of $.045 - .055$, converging closer to $.05$ as sample size grows. From this analysis we can then conclude that most of the tests sufficiently control the Type I error, but caution is needed for the $F$-test even with big samples and with the KS test with small samples. \textcolor{red}{ Under ideal conditions, when normality and homogeneity of variance hold, the F test performs extremely well and can be highly powerful (see Supplementary Materials for assumption-compliant scenarios). In contrast, when these assumptions are not met, as in the majority of simulated conditions, its Type I error becomes inflated and inference unreliable. This contrast highlights how critically the validity of conclusions depends on assumption checking, making their consideration a central methodological issue rather than a technical detail. This emphasizes that assumption validity is not merely theoretical but decisively shapes inferential outcomes.}
 
   \vspace{0.2cm}
 
@@ -1165,26 +1164,7 @@ All authors contributed substantially to the conceptualization, code development
 \bibliographystyle{apacite}
 \bibliography{overlap}
 
-\end{document}
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{FINO QUI}
-\bibliographystyle{apacite}
-\bibliography{overlap}
-<<>>=
-PARlist <- list(
-  xi_vec = c(0,.5,1),
-  omega_vec = c(1,2,3),
-  alpha_vec = c(0,1,2)
-)
-load(paste0(datadir,"R02_sim07.rda"))
-NTAB <- table(ALL$n,ALL$mu,ALL$sigma,ALL$alpha)
-
-opts_chunk$set(eval = FALSE)
-@
-\end{document}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
