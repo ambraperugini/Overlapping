@@ -550,7 +550,7 @@ TEXw <- with(xList, t.test(x1, x2))
     \vspace{0.2cm}
 
 
-<<ex2,fig.cap=paste0("[A] Distribution of reaction times of word reading of high and low frequency words in English. The overlapping area is $\\hat{\\eta} = ",round(1-obsz,2),"$, corresponding to a non-overlapping area of $\\hat{\\zeta} = 1 - \\hat{\\eta} = ",round(obsz,2),"$; [B] Distribution of $\\hat{\\zeta}$ obtained with ",B," permutations of the data."),fig.pos="!t", fig.width=6>>=
+<<ex2,fig.cap=paste0("[A] Distribution of reaction times of word reading of high (blue) and low (red) frequency words in English. The overlapping area is $\\hat{\\eta} = ",round(1-obsz,2),"$, corresponding to a non-overlapping area of $\\hat{\\zeta} = 1 - \\hat{\\eta} = ",round(obsz,2),"$; [B] Distribution of $\\hat{\\zeta}$ obtained with ",B," permutations of the data."),fig.pos="!t", fig.width=6>>=
 x1List <- list( x1 = low_frequency, x2 = high_frequency ) 
 x1List[[1]] <- c(x1List[[1]], NA)
 Y <- stack(data.frame(x1List))
@@ -558,11 +558,21 @@ ZPERM <- data.frame(zperm)
 
 theme_set(theme_bw())
 cowplot::plot_grid(
-  ggplot( Y, aes(values,fill=ind,color=ind) )+geom_density(alpha = .5) + theme(legend.title = element_blank()) +xlab("Reaction Time (seconds)") +ylab("")+guides(fill="none",color="none")+ggtitle("[A]"),
+  ggplot(Y, aes(values,fill=ind,color=ind)) + 
+    geom_density(alpha = .5) + 
+    theme(legend.title = element_blank()) + 
+    xlab("Reaction Time (seconds)") + 
+    ylab("") + 
+    guides(fill="none",color="none") + 
+    ggtitle("[A]"),
 
-  ggplot(ZPERM,aes(zperm))+geom_vline(xintercept = obsz,lty=2) +geom_density()+ggtitle("[B]")  +xlab("$\\hat{\\zeta}$ distribution") +ylab(""), 
+  ggplot(ZPERM, aes(zperm)) + 
+    geom_vline(xintercept = obsz, lty=2) + 
+    geom_density() + 
+    ggtitle("[B]") + 
+    xlab(expression(paste(hat(zeta), " distribution"))) + 
+    ylab(""), 
   ncol=2
-
 )
 @
 
@@ -741,13 +751,31 @@ UNIT <- .5
 
 theme_set(theme_bw())
 cowplot::plot_grid(
-  ggplot(subset(gData,scenario=="xi"),aes(x,y,color=xi))+geom_line()+xlab("")+ylab("")+ggtitle("[A]")+labs(color="$\\xi$") + theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm")),
+  ggplot(subset(gData,scenario=="xi"),aes(x,y,color=xi)) + 
+    geom_line() + 
+    xlab("") + 
+    ylab("") + 
+    ggtitle("[A]") + 
+    labs(color=expression(xi)) + 
+    theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm")),
   
-  ggplot(subset(gData,scenario=="omega"),aes(x,y,color=omega))+geom_line()+xlab("")+ylab("")+ggtitle("[B]")+theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm"))+labs(color="$\\omega$"),
+  ggplot(subset(gData,scenario=="omega"),aes(x,y,color=omega)) + 
+    geom_line() + 
+    xlab("") + 
+    ylab("") + 
+    ggtitle("[B]") + 
+    labs(color=expression(omega)) + 
+    theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm")),
   
-  ggplot(subset(gData,scenario=="alpha"),aes(x,y,color=alpha))+geom_line()+xlab("")+ylab("")+ggtitle("[C]")+theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm"))+labs(color="$\\alpha$"), nrow = 1
+  ggplot(subset(gData,scenario=="alpha"),aes(x,y,color=alpha)) + 
+    geom_line() + 
+    xlab("") + 
+    ylab("") + 
+    ggtitle("[C]") + 
+    labs(color=expression(alpha)) + 
+    theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm")), 
+  nrow = 1
 )
-
 @
 \caption{Examples of Skew-Normal distributions ($\xi$,$\omega$,$\alpha$); [A] three densities with same scale and shape but different location parameter values ($\xi = \Sexpr{PARlist$xi_vec}$), [B] three densities with same location and shape but different scale parameter values ($\omega = \Sexpr{PARlist$omega_vec}$) and [C] three densities with same location and scale but different shape parameter values ($\alpha = \Sexpr{PARlist$alpha_vec}$). \label{fig:scenari}}
 \end{figure*}
@@ -1034,22 +1062,38 @@ In relation to type I error, almost all tests show a good performance, whereas t
 \begin{figure*}[!h]
 <<global,fig.width=7>>=
 
-
-levels(Y$ind) <- gsub("zeta","$\\\\zeta",gsub("welch","w",gsub("vartest","$F$",gsub("wilcox","wmw",gsub("_perm","_{\\\\mbox{ov}}$",gsub("_sig","",levels(Y$ind)))))))
+# Rimuovi i simboli LaTeX dalle etichette
+levels(Y$ind) <- gsub("zeta","zeta",
+                     gsub("welch","w",
+                     gsub("vartest","F",
+                     gsub("wilcox","wmw",
+                     gsub("_perm","_ov",
+                     gsub("_sig","",levels(Y$ind)))))))
 
 Y$ind <- factor(Y$ind, levels=levels(Y$ind)[c(1,5:6,4:2)])
 
 theme_set(theme_bw())
 plot_grid(
-  ggplot( subset(Y,H0==TRUE), aes(n,values,color=ind,shape=ind))  + geom_hline(yintercept = .05, lty = 3) + geom_line() + geom_point() + guides(color="none",shape = "none") + ggtitle("[A] $H_0$ true") + ylab("P(reject $H_0$)") + xlab("sample size (per group)"),
+  ggplot(subset(Y,H0==TRUE), aes(n,values,color=ind,shape=ind)) + 
+    geom_hline(yintercept = .05, lty = 3) + 
+    geom_line() + 
+    geom_point() + 
+    guides(color="none",shape = "none") + 
+    ggtitle(expression(paste("[A] ", H[0], " true"))) + 
+    ylab(expression(paste("P(reject ", H[0], ")"))) + 
+    xlab("sample size (per group)"),
   
-  ggplot( subset(Y,H0==FALSE), aes(n,values,color=ind,shape=ind))  + geom_hline(yintercept = .05, lty = 3) + geom_line() + geom_point() + theme(legend.title = element_blank()) + ggtitle("[B] $H_0$ false") + ylab("P(reject $H_0$)") + xlab("sample size (per group)"),
+  ggplot(subset(Y,H0==FALSE), aes(n,values,color=ind,shape=ind)) + 
+    geom_hline(yintercept = .05, lty = 3) + 
+    geom_line() + 
+    geom_point() + 
+    theme(legend.title = element_blank()) + 
+    ggtitle(expression(paste("[B] ", H[0], " false"))) + 
+    ylab(expression(paste("P(reject ", H[0], ")"))) + 
+    xlab("sample size (per group)"),
   
   rel_widths = c(.6,1)
-
-  
 )
-
 @
 \caption{Control of type I error [A] and power [B] in the various tests. Note: $\zeta_{\mbox{ov}}$ = $\zeta$-Overlapping test, $F$ = variance test, ks = Kolmogorov-Smirnov test, wmw = Wicoxon-Mann-Whitney test, w = Welch test, $t$ = Student's $t$ test. \label{fig:global}}
 \end{figure*}
