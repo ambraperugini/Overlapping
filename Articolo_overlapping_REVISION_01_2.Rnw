@@ -1129,9 +1129,6 @@ In figure \ref{fig:global}, panel [A], the only test which is over-conservative 
 
 \textcolor{red}{While the $\zeta$-test offers a broader diagnostic scope, it is not intended to replace targeted hypothesis tests when those are clearly aligned with the research goal and respect the nature of the data. When the research hypothesis specifically targets a single parameter, such as a mean difference, the use of more focused tests (e.g., Welch’s t-test) may offer higher statistical power under valid assumptions. A complementary simulation study comparing power across such focused and omnibus approaches would be a valuable avenue for future work.}
 
-AGGIUNGERE INFO SU BANDWIDTH E LIMITI DA TENERE IN CONSIDERAZIONE QUANDO SI HANNO TANTISSIME OSSERVAZIONI (?)
-
-
 \section{Conclusion}
 
 \textcolor{red}{Many researchers focus on differences in means and may not initially consider the full distribution of their data. One of the strengths of the $\zeta$-Overlapping test is precisely that it encourages a more holistic view, prompting researchers to explore whether groups differ not just in central tendency but in dispersion or shape as well. More precisely, it is easy to interpret as an effect size, with high values of $\zeta$ signaling differences between the two empirical distributions and low values indicating similarity. It is robust to distributional assumptions, as it calculates $p$-values through permutations rather than relying on parametric assumptions like normality or equal variance, making it particularly useful in scenarios where other tests may be sub-optimal due to assumption violations, also providing a conservative Type I error rate when \(H_0\) is true and robust power when \(H_0\) is false. In practice, the $\zeta$-Overlapping test can serve as a global test that prompts a broader examination of the data’s characteristics.}
