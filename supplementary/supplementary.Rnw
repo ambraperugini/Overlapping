@@ -38,6 +38,7 @@ opts_chunk$set(fig.width=3, fig.height=3, dev="tikz",fig.align='center',echo=FAL
 
 <<>>=
 rm(list=ls())
+set.seed(135)
 main <- "/Users/ambraperugini/Documents/Work/projects/Overlapping/supplementary/"
 
 # main <- "~/lavori/overpermutation/"
@@ -52,13 +53,13 @@ datadir <- paste0(main,"data/")
 
 \title{\textbf{\textit{How do my distributions differ?} \\ Significance testing for the Overlapping Index \\ using Permutation Test \\ Supplementary material}} 
 
+% 
+% \author{Giulia Calignano$^{1}$, Ambra Perugini$^{1}$*, Massimo Nucci$^{2}$, Livio Finos$^{3}$, Massimiliano Pastore$^{1}$\\
+% \small $^1$ Department of Developmental and Social Psychology, University of Padua, Italy\\
+% \small $^2$ Department of General Psychology, University of Padua, Italy\\
+% \small $^3$ Department of Statistical Sciences, University of Padua, Italy }
 
-% \subtitle{This manuscript has been postet as a pre-print has not yet undergone peer-review}
-
-\author{Giulia Calignano$^{1}$, Ambra Perugini$^{1}$*, Massimo Nucci$^{2}$, Livio Finos$^{3}$, Massimiliano Pastore$^{1}$\\
-\small $^1$ Department of Developmental and Social Psychology, University of Padua, Italy\\
-\small $^2$ Department of General Psychology, University of Padua, Italy\\
-\small $^3$ Department of Statistical Sciences, University of Padua, Italy }
+\date{}
 
 \maketitle
 
@@ -341,30 +342,15 @@ add_and <- function(x, eng = TRUE) {
 @
 
 \begin{abstract}
-The present study introduces the application of the permutation test to the Overlapping Index, an effect size measure for comparing density distributions of groups or conditions, to estimate effects of interest in psychological science. Starting with common scenarios in psychological science research, the paper highlights the importance of relying on statistical methods that are resilient to the complexities inherent in psychological data, where assumption violations are often inevitable. A Simulation study is presented to illustrate the practical implications and reliability of the proposed test compared to commonly used alternatives. The findings demonstrate the good control of Type I error of the $\zeta$-Overlapping test and how this approach outperforms in terms of power all other tests considered in the simulation, already with small samples. The paper offers practical guidance and demonstrates the advantages of this method, emphasizing its potential to enhance transparency and rigor in psychological data analysis by shifting focus from traditional significance testing to comprehensive distributional evaluations.
+Psychological research frequently relies on statistical tests targeting single distributional parameters, typically means, despite empirical data often differing in variance, skewness, or overall shape. We introduce the $\zeta$-Overlapping test, a permutation-based inferential procedure built on the Overlapping Index, an effect size quantifying similarity between empirical distributions. The proposed approach evaluates global distributional differences without relying on parametric assumptions. Through simulations manipulating mean, variance, skewness, and sample size, we compare the $\zeta$-Overlapping test with commonly used procedures (t, Welch, Wilcoxon–Mann–Whitney, Kolmogorov–Smirnov, and variance tests). Results show accurate Type I error control and substantially higher power than parameter-specific tests across a wide range of non-normal scenarios, with strong performance even from small sample sizes. An applied example using reaction-time data demonstrates how distributional overlap detects differences missed by mean-based analyses. Rather than replacing traditional tests, the method provides a theoretically aligned global assessment that encourages distribution-aware inference and integration of visualization and descriptive analysis into statistical workflows. The $\zeta$-Overlapping framework supports ongoing methodological shifts in psychological science toward robust, assumption-light, and interpretable statistical reasoning.
 \end{abstract}
 
 
 \newpage
 \section{Simulation study}
 
-To evaluate the performance of the permutation test applied to the Overlapping Index, we performed a simulation study. The aim is to generate data for a set of scenarios distinguishing mean, variance and shape of the populations and compare the $\zeta$-Overlapping permutation test to other commonly used tests in terms of type I error control and power. 
+To evaluate the performance of the permutation test applied to the Overlapping Index, we performed a simulation study. The aim is to generate data for a set of scenarios distinguishing mean, variance and shape of the populations and compare the $\zeta$-Overlapping permutation test to other commonly used tests in terms of type I error control and power. The detailed description of the simulation study can be found in the main draft. 
 
-
-\subsection{Data generation}
-
-In the simulation, two density distributions will be compared for many different scenarios. The first distribution will always be a normal standard distribution with $\mu = 0$ and $\sigma = 1$. 
-To simulate data for the second distribution we use the Skew-Normal distribution \cite{azzalini:1985}, which is defined in the following way: given $\xi \in \mathbb{R}$, $\omega \in \mathbb{R}^{+}$ and $\alpha \in \mathbb{R}$, then for $y \in \mathbb{R}$ we have  
-\begin{equation}
-\mathcal{SN}(y|\xi, \omega, \alpha) = \frac{1}{\omega \sqrt{2\pi}} \exp \left[ -\frac{1}{2} \left( \frac{y-\xi}{\omega} \right)^2  \right] \left[ 1+ \text{erf}\left( \alpha \left( \frac{y-\xi}{\omega\sqrt{2}}\right) \right) \right]
-\end{equation}
-in which $$\text{erf}(z) = \frac{2}{\sqrt{\pi}} \int_{0}^{z} e^{-t^2} dt $$ is the \emph{error function}.
-When $\xi = 0$, $\omega = 1$ and $\alpha = 0$ the distribution is a standard normal distribution.
-
-$\xi$ is the location parameter, $\omega$ is the scale parameter and $\alpha$ is related to the skewness of the distribution. Therefore, this distribution is suitable to generate data modelling both the distance between means (the effect size), symmetry and variance.
-
-
-\begin{figure*}[!h]
 <<scenari,fig.width=7,message=FALSE>>=
 library(sn)
 
@@ -414,37 +400,9 @@ gData$alpha <- factor(gData$alpha)
 
 UNIT <- .5
 
-library(ggplot2)
-theme_set(theme_bw())
-cowplot::plot_grid(
-  ggplot(subset(gData,scenario=="xi"),aes(x,y,color=xi))+geom_line()+xlab("")+ylab("")+ggtitle("[A]")+labs(color="$\\xi$") + theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm")),
-  
-  ggplot(subset(gData,scenario=="omega"),aes(x,y,color=omega))+geom_line()+xlab("")+ylab("")+ggtitle("[B]")+theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm"))+labs(color="$\\omega$"),
-  
-  ggplot(subset(gData,scenario=="alpha"),aes(x,y,color=alpha))+geom_line()+xlab("")+ylab("")+ggtitle("[C]")+theme(legend.position = "bottom", legend.key.size = unit(UNIT,"cm"))+labs(color="$\\alpha$"), nrow = 1
-)
-
 @
-\caption{Examples of Skew-Normal distributions ($\xi$,$\omega$,$\alpha$); [A] three densities with same variance and shape but different location parameter values ($\xi = \Sexpr{PARlist$xi_vec}$), [B] three densities with same mean and shape but different scale parameter values ($\omega = \Sexpr{PARlist$omega_vec}$) and [C] three densities with same mean and variance but different shape parameter values ($\alpha = \Sexpr{PARlist$alpha_vec}$). \label{fig:scenari}}
-\end{figure*}
 
-Mean and variance of the Skew-Normal are respectively: 
-\begin{eqnarray}\label{eq:musigmaSN}
-\begin{array}{l}
-\mu = \xi + \omega \gamma \sqrt{2/\pi} \\
-\sigma^2 = \omega^2 [1- (2\gamma^2)/\pi]
-\end{array}
-\end{eqnarray}
-in which $\gamma = \alpha / \sqrt{1 + \alpha^2}$. Based on the equations (\ref{eq:musigmaSN}) we can determine the values to assign to the parameters $\xi$ e $\omega$ in function of $\mu$ and $\sigma$ with the equations:
 
-\begin{eqnarray}\label{eq:xiomegaSN}
-\begin{array}{l}
- \xi = \mu - \omega \gamma \sqrt{2/\pi} \\
- \omega = \sqrt{\sigma^2/ [1- (2\gamma^2)/\pi]}
-\end{array}
-\end{eqnarray}
-
-The Skew-Normal distribution is optimal for our purpose as it allows to have control over parameters of mean, variance, skewness and kurtosis, as shown in figure \ref{fig:scenari}.
 
 <<cache=FALSE>>=
 load(paste0(datadir,"R02_sim07.rda"))
@@ -453,8 +411,6 @@ NTAB <- table(ALL$n,ALL$mu,ALL$sigma,ALL$alpha)
 
 
 \subsection{Simulation design}
-
-
 
 In the simulation we confront two samples extracted from a Skew-Normal, the first one is generated from $\mathcal{SN}(0,1,0)$, which is the Standard-Normal distribution, and the second one from $\mathcal{SN}(\xi,\omega,\alpha)$. Consequently, the first sample derives always from a population with mean 0 and variance 1. To define the various scenarios, we manipulate the parameters of the second population in orther to obtain specific differences in means ($\delta$), standard deviations ($\sigma$) and skewness ($\alpha$). Four factors were sistematically varied ina complete four-factors design as follows:
 
@@ -566,18 +522,7 @@ TEXT$y <- .4
 
 @
 
-\begin{figure*}
-%,fig.width=7,fig.cap=" ",fig.height=9
-<<alpha0,fig.width=7,fig.height=9>>=
 
-theme_set(theme_bw())
-ggplot(Y,aes(x,z)) + facet_grid(alpha+sigma~mu) + geom_line() + geom_line(aes(x,values,color="red")) + geom_text( aes(x,y,label=label), data = TEXT) + guides(color="none") + xlab("") + ylab("") + scale_y_continuous(breaks = NULL)
-
-@
-\caption{Generative data distributions in function of $\delta$ (column panels),  $\sigma$ and $\alpha$ (row panels). The black curves are the first population, $\mathcal{SN}(0,1,0)$, the red ones represent second population, $\mathcal{SN}(\xi,\omega,\alpha)$.\label{fig:alpha0}}
-\end{figure*}
-
-In figure \ref{fig:alpha0} are graphically represented the 36 scenarios of data generation, the black curves are the first population, always a $\mathcal{SN}(0,1,0)$, and the red curves are relative to the second population $\mathcal{SN}(\xi,\omega,\alpha)$.
 
 For each combination $\delta \times \sigma \times \alpha \times n $, on the generated data were performed the following tests: 
 \begin{itemize}
@@ -623,15 +568,9 @@ print( xtable( TABcheck, label = "tab:tabcheck",  caption = paste0("Means of mea
 
 @
 
-\subsubsection{Type I error and power}
-
-
-Figure \ref{fig:figpaper} replicates the figure presented in the paper. To obtain this figure, we used the following algorithm:
-
-\begin{enumerate}
- \item For each test, we created a dummy variable indicating with \texttt{TRUE} a statistically significant result ($p\leq .05$) and with \texttt{FALSE} a non-significant result ($p > .05$).
  
 <<>>=
+library(ggplot2)
 
 ALL$zeta_perm_sig <- ifelse(ALL$zeta_perm_pval<=.05,TRUE,FALSE)
 ALL$t_sig <- ifelse(ALL$t_pval <= .05, TRUE, FALSE)
@@ -641,12 +580,11 @@ ALL$vartest_sig <- ifelse(ALL$vartest_pval <= .05, TRUE, FALSE)
 ALL$ks_test_sig <- ifelse(ALL$ks_test_pval <= .05, TRUE, FALSE)
 
 @
- \item We created a dummy variable indicating the experimental conditions for which the Null hypothesis is \texttt{TRUE} (i.e., conditions where there is no real difference between the populations being compared: $\mu_1 = \mu_2 = \delta = 0$, $\sigma_1 = \sigma_2 = \sigma = 1$, $\alpha_1 = \alpha_2 = \alpha = 0$). Note that this condition is illustrated in panel [1] of Figure \ref{fig:scenari}.
- 
+
 <<>>=
 ALL$H0_TRUE <- with(ALL, ifelse(mu==0 & sigma == 1 & alpha == 0, TRUE, FALSE))
 @
- \item We aggregated results by calculating the proportion of significant results for each condition to obtain type I error and power curves for each test.
+
 
 <<>>=
 PW <- aggregate( zeta_perm_sig ~ n+H0_TRUE, data = ALL, FUN = mean)
@@ -662,35 +600,6 @@ Y$n <- PW$n
 
 @
 
-\end{enumerate}
-
-In Figure \ref{fig:figpaper}, panel [A] shows the type I error curves as a function of sample size ($n$), while panel [B] shows the power curves as a function of sample size ($n$). 
-
-<<figpaper,fig.width=7,fig.cap="Control of type I error [A] and power [B] in the various tests. Note: $\\zeta_{\\mbox{ov}}$ = $\\zeta$-Overlapping test, $F$ = variance test, ks = Kolmogorov-Smirnov test, wmw = Wilcoxon-Mann-Whitney test, w = Welch test, $t$ = Student's $t$ test.",fig.scap="a",fig.pos="!h">>=
-library(cowplot)
-
-levels(Y$ind) <- gsub("zeta","$\\\\zeta",gsub("welch","w",gsub("vartest","$F$",gsub("wilcox","wmw",gsub("_perm","_{\\\\mbox{ov}}$",gsub("_sig","",levels(Y$ind)))))))
-
-Y$ind <- factor(Y$ind, levels=levels(Y$ind)[c(1,5:6,4:2)])
-
-theme_set(theme_bw())
-plot_grid(
-  ggplot( subset(Y,H0==TRUE), aes(n,values,color=ind,shape=ind))  +
-    geom_hline(yintercept = .05, lty = 3) + geom_line() + geom_point() + 
-    guides(color="none",shape = "none") + ggtitle("[A] H0 true") +
-    ylab("P(reject H0)") + xlab("Sample size (per group)"),
-  
-  ggplot( subset(Y,H0==FALSE), aes(n,values,color=ind,shape=ind)) +
-    geom_hline(yintercept = .05, lty = 3) + geom_line() + geom_point() + 
-    theme(legend.title = element_blank()) + ggtitle("[B] H0 false") + 
-    ylab("P(reject H0)") + xlab("Sample size (per group)"),
-  
-  rel_widths = c(.6,1)
-
-  
-)
-
-@
 
 \section{Overlapping vs overall test}
 
@@ -818,6 +727,9 @@ head( subset(ALL, t_test_assumption == FALSE & alpha == 0 )[,c("mu","alpha","ome
 @
 
 <<adjPower,fig.width=4,fig.cap="Probability of rejecting $t$-test Null hypothesis after Bonferroni adjustment as a function of sample size (per group). 0 = scenario in which $t$-test assumptions are respected and there are no mean difference ($H_0$ is TRUE); 1 = scenario in which  $t$-test assumptions are respected and there is a difference in means  ($H_0$ is FALSE); 2 = scenario in which  $t$-test assumptions are not respected and there is a difference in means  ($H_0$ is FALSE); $\\zeta_{\\mbox{ov}}$ = $\\zeta$ overlapping test power curve.",fig.pos="!b">>=
+
+library(ggplot2)
+
 adjPW <- aggregate( adj_overall_sig ~ n + H0_overall+t_test_assumption, data = ALL, FUN = mean )
 adjPW$scenario <- factor(apply(adjPW[,2:3],1,function(x){
   sum(!x)

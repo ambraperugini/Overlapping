@@ -45,15 +45,9 @@ datadir <- paste0(main,"data/")
 
 \begin{document}
 
-\title{\textbf{\textit{How do my distributions differ?} \\ Significance testing for the Overlapping Index \\ using Permutation Test }} 
+\title{\textbf{\textit{How do my distributions differ?} \\ Significance testing for the Overlapping Index \\ using Permutation Test}} 
 
 
-% \subtitle{This manuscript has been postet as a pre-print and is currently under review}
-
-% \author{Giulia Calignano$^{1}$, Ambra Perugini$^{1}$*, Massimo Nucci$^{2}$, Livio Finos$^{3}$, Massimiliano Pastore$^{1}$\\
-% \small $^1$ Department of Developmental and Social Psychology, University of Padua, Italy\\
-% \small $^2$ Department of General Psychology, University of Padua, Italy\\
-% \small $^3$ Department of Statistical Sciences, University of Padua, Italy }
 
 \date{}
 
